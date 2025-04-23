@@ -18,6 +18,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LoginPath = "/Account/Login";
         options.AccessDeniedPath = "/Account/AccessDenied"; // optional
     });
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

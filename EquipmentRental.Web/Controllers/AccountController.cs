@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Cryptography;
 using System.Text;
 using EquipmentRental.DataAccess.Models;
+using Microsoft.AspNetCore.Authorization;
+
+[Authorize] // Require login for logout
 
 public class AccountController : Controller
 {
@@ -85,16 +88,18 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Home");
     }
 
-    public async Task<IActionResult> Logout()
-    {
-        await HttpContext.SignOutAsync();
-        return RedirectToAction("Login");
-    }
-
     private string HashPassword(string password)
     {
         using var sha256 = SHA256.Create();
         var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
         return Convert.ToBase64String(bytes);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction("Index", "Home");
     }
 }
