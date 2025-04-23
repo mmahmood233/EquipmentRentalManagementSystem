@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using EquipmentRental.Web.Models;
 
 [Authorize] // Applies to all actions unless [AllowAnonymous] is specified
 public class AccountController : Controller
@@ -110,5 +111,61 @@ public class AccountController : Controller
         using var sha256 = SHA256.Create();
         var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
         return Convert.ToBase64String(bytes);
+    }
+
+    [Authorize]
+    public IActionResult Profile()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+        var user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+
+        if (user == null)
+            return NotFound();
+
+        var model = new UserProfileViewModel
+        {
+            UserId = user.UserId,
+            FullName = user.FullName,
+            Email = user.Email
+        };
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize]
+    public async Task<IActionResult> Profile(UserProfileViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _context.Users.FindAsync(model.UserId);
+        if (user == null)
+            return NotFound();
+
+        user.FullName = model.FullName;
+        user.Email = model.Email;
+
+        // If user wants to change password
+        if (!string.IsNullOrEmpty(model.CurrentPassword) &&
+            !string.IsNullOrEmpty(model.NewPassword) &&
+            model.NewPassword == model.ConfirmPassword)
+        {
+            var hashedCurrent = HashPassword(model.CurrentPassword);
+            if (user.PasswordHash != hashedCurrent)
+            {
+                ModelState.AddModelError("CurrentPassword", "Current password is incorrect.");
+                return View(model);
+            }
+
+            user.PasswordHash = HashPassword(model.NewPassword);
+        }
+
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
+
+        ViewBag.Message = "Profile updated successfully.";
+        return View(model);
     }
 }
