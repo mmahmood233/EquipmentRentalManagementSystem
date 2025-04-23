@@ -1,16 +1,15 @@
 ﻿using EquipmentRental.DataAccess;
+using EquipmentRental.DataAccess.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Cryptography;
 using System.Text;
-using EquipmentRental.DataAccess.Models;
-using Microsoft.AspNetCore.Authorization;
 
-[Authorize] // Require login for logout
-
+[Authorize] // Applies to all actions unless [AllowAnonymous] is specified
 public class AccountController : Controller
 {
     private readonly EquipmentRentalDbContext _context;
@@ -21,9 +20,13 @@ public class AccountController : Controller
     }
 
     // GET: /Account/Register
+    [AllowAnonymous]
     public IActionResult Register() => View();
 
+    // POST: /Account/Register
     [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(UserRegisterViewModel model)
     {
         if (!ModelState.IsValid)
@@ -53,15 +56,20 @@ public class AccountController : Controller
     }
 
     // GET: /Account/Login
+    [AllowAnonymous]
     public IActionResult Login() => View();
 
+    // POST: /Account/Login
     [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(UserLoginViewModel model)
     {
         if (!ModelState.IsValid)
             return View(model);
 
         var hashed = HashPassword(model.Password);
+
         var user = await _context.Users
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email == model.Email && u.PasswordHash == hashed);
@@ -88,18 +96,19 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Home");
     }
 
-    private string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(bytes);
-    }
-
+    // POST: /Account/Logout
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction("Login", "Account");
+    }
+
+    private string HashPassword(string password)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+        return Convert.ToBase64String(bytes);
     }
 }
