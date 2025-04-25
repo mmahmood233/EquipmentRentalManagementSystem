@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using EquipmentRental.DataAccess.Models;
 
 namespace EquipmentRental.Forms
 {
@@ -21,7 +22,14 @@ namespace EquipmentRental.Forms
         {
             RentalRequests rentalRequests = new RentalRequests();
             rentalRequests.Show();
-            this.Close();
+          
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            RentalTransactionsAdmin rentalTransactionsAdmin = new RentalTransactionsAdmin();
+            rentalTransactionsAdmin.Show();
+            
         }
     }
 }

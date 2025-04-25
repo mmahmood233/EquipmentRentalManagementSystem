@@ -60,6 +60,11 @@ namespace EquipmentRental.Forms
 
                 if (userRole != null)
                 {
+
+                    GlobalUserInfo.UserId = user.UserId;
+                    GlobalUserInfo.UserRole = userRole.RoleName;
+                    GlobalUserInfo.UserName = user.FullName;
+
                     switch (userRole.RoleName)
                     {
                         case "Administrator":
@@ -70,8 +75,8 @@ namespace EquipmentRental.Forms
                             break;
 
                         case "Customer":
-                            RentalRequestsUser rentalRequestsUser = new RentalRequestsUser(user.UserId, userRole.RoleName);
-                            rentalRequestsUser.Show();
+                            UserHomePage userHomePage = new UserHomePage();
+                            userHomePage.Show();
                             this.Hide();
                             break;
 

@@ -30,6 +30,7 @@
         {
             label1 = new Label();
             button1 = new Button();
+            button2 = new Button();
             SuspendLayout();
             // 
             // label1
@@ -52,11 +53,22 @@
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 
+            // button2
+            // 
+            button2.Location = new Point(234, 281);
+            button2.Name = "button2";
+            button2.Size = new Size(291, 46);
+            button2.TabIndex = 5;
+            button2.Text = "Rental Transactions";
+            button2.UseVisualStyleBackColor = true;
+            button2.Click += button2_Click;
+            // 
             // UserHomePage
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 659);
+            Controls.Add(button2);
             Controls.Add(button1);
             Controls.Add(label1);
             Name = "UserHomePage";
@@ -69,5 +81,6 @@
 
         private Label label1;
         private Button button1;
+        private Button button2;
     }
 }

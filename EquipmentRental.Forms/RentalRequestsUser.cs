@@ -20,11 +20,7 @@ namespace EquipmentRental.Forms
         EquipmentRentalDbContext context;
 
 
-        public RentalRequestsUser()
-        {
-            InitializeComponent();
-        
-        }
+      
 
         public RentalRequestsUser(int userId, string userRole)
         {
