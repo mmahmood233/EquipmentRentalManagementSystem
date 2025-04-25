@@ -14,20 +14,30 @@ namespace EquipmentRental.Forms
 {
     public partial class RentalRequestsUser : Form
     {
+
+        private int userId;
+        private string userRole;
         EquipmentRentalDbContext context;
+
 
         public RentalRequestsUser()
         {
             InitializeComponent();
-            context = new EquipmentRentalDbContext();
+        
+        }
 
+        public RentalRequestsUser(int userId, string userRole)
+        {
+            InitializeComponent();
+            this.context = new EquipmentRentalDbContext();
+            this.userId = userId; // Store UserId
+            this.userRole = userRole; // Store UserRole
         }
 
         private void RentalRequestsUser_Load(object sender, EventArgs e)
         {
-            Loader();  // Load rental requests with default parameters
+            Loader();  
 
-            // Populate ComboBox with filter options
             comboBoxStatusFilter.Items.Add("All");
             comboBoxStatusFilter.Items.Add("Pending");
             comboBoxStatusFilter.Items.Add("Approved");
@@ -39,6 +49,9 @@ namespace EquipmentRental.Forms
         private void Loader(string statusFilter = null, string searchKeyword = null)
         {
             var query = context.RentalRequests.AsQueryable();
+
+            // Filter the rental requests based on the logged-in user
+            query = query.Where(r => r.CustomerId == userId);
 
             if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "All")
             {
@@ -54,6 +67,7 @@ namespace EquipmentRental.Forms
 
             dataGridViewRentalRequests.DataSource = rentalRequests;
         }
+
 
         private void btnSearchSubmit_Click(object sender, EventArgs e)
         {

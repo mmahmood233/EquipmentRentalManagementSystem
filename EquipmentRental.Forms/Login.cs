@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,9 +8,11 @@ using EquipmentRental.DataAccess.Models;
 
 namespace EquipmentRental.Forms
 {
+    
     public partial class Login : Form
     {
-        EquipmentRentalDbContext context;
+        private EquipmentRentalDbContext context;
+
         public Login()
         {
             InitializeComponent();
@@ -22,18 +25,18 @@ namespace EquipmentRental.Forms
 
         private void LoginButton_Click(object sender, EventArgs e)
         {
-            string usernameOrEmail = txtUsername.Text.Trim();  // Assuming txtUsername is the TextBox for Email or Username
-            string password = txtPassword.Text.Trim();  // Assuming txtPassword is the TextBox for Password
+            string usernameOrEmail = txtUsername.Text.Trim();
+            string password = txtPassword.Text.Trim();
 
-            // Check if the fields are not empty
             if (string.IsNullOrEmpty(usernameOrEmail) || string.IsNullOrEmpty(password))
             {
                 MessageBox.Show("Please enter both username/email and password.");
                 return;
             }
 
-            // Authenticate user from the database by either username or email
-            var user = context.Users.SingleOrDefault(u => u.Email == usernameOrEmail || u.FullName == usernameOrEmail);
+            var user = context.Users
+                .Where(u => u.Email == usernameOrEmail || u.FullName == usernameOrEmail)
+                .FirstOrDefault();
 
             if (user == null)
             {
@@ -41,8 +44,7 @@ namespace EquipmentRental.Forms
                 return;
             }
 
-            // Check if the user account is active
-            if (user.IsActive == false)
+            if (!user.IsActive.GetValueOrDefault())
             {
                 MessageBox.Show("Your account is inactive.");
                 return;
@@ -51,7 +53,37 @@ namespace EquipmentRental.Forms
             if (VerifyPasswordHash(password, user.PasswordHash))
             {
                 MessageBox.Show("Login successful!");
-               
+
+                var userRole = context.UserRoles
+                                      .Where(ur => ur.RoleId == user.RoleId)
+                                      .FirstOrDefault();
+
+                if (userRole != null)
+                {
+                    switch (userRole.RoleName)
+                    {
+                        case "Administrator":
+                        case "Manager":
+                            AdminHomePage adminHomePage = new AdminHomePage();
+                            adminHomePage.Show();
+                            this.Hide();
+                            break;
+
+                        case "Customer":
+                            RentalRequestsUser rentalRequestsUser = new RentalRequestsUser(user.UserId, userRole.RoleName);
+                            rentalRequestsUser.Show();
+                            this.Hide();
+                            break;
+
+                        default:
+                            MessageBox.Show("Unknown user role.");
+                            break;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Role not found.");
+                }
             }
             else
             {
@@ -59,23 +91,17 @@ namespace EquipmentRental.Forms
             }
         }
 
-        // Method to verify password hash (SHA256 hashing example)
+        // Method to verify the password hash using SHA-256
         private bool VerifyPasswordHash(string password, string storedHash)
         {
             using (var sha256 = SHA256.Create())
             {
+                // Hash the entered password
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-
-                Console.WriteLine("Entered password hash: " + hashString);
-                Console.WriteLine("Stored password hash: " + storedHash);
+                var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower(); 
 
                 return storedHash == hashString;
             }
         }
-
-
-
-
     }
 }

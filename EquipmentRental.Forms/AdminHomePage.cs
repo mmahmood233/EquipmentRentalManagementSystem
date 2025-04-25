@@ -16,5 +16,12 @@ namespace EquipmentRental.Forms
         {
             InitializeComponent();
         }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            RentalRequests rentalRequests = new RentalRequests();
+            rentalRequests.Show();
+            this.Close();
+        }
     }
 }
