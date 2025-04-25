@@ -28,17 +28,27 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
+
+                        @if (HttpContextAccessor.HttpContext.User.Identity.IsAuthenticated &&
+                        HttpContextAccessor.HttpContext.User.IsInRole("Administrator"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Admin" asp-action="Dashboard">Admin Panel</a>
+                            </li>
+                        }
                     </ul>
+
                     <ul class="navbar-nav">
                         @if (HttpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
                         {
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                <button type="submit" class="btn btn-link nav-link">Logout</button>
-                            </form>
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Account" asp-action="Profile">Profile</a>
                             </li>
-
+                            <li class="nav-item">
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-link nav-link">Logout</button>
+                                </form>
+                            </li>
                         }
                         else
                         {

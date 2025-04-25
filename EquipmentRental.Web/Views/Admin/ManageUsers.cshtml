@@ -1,0 +1,22 @@
+﻿@model List<EquipmentRental.DataAccess.Models.User>
+
+<h2>Manage Users</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in Model)
+        {
+            <tr>
+                <td>@user.FullName</td>
+                <td>@user.Email</td>
+                <td>@user.Role?.RoleName</td>
+            </tr>
+        }
+    </tbody>
+</table>

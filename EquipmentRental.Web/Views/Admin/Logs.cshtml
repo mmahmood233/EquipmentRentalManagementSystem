@@ -1,0 +1,24 @@
+﻿@model List<EquipmentRental.DataAccess.Models.Log>
+
+<h2>Audit Logs</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Action</th>
+            <th>Source</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var log in Model)
+        {
+            <tr>
+                <td>@log.User?.FullName</td>
+                <td>@log.Action</td>
+                <td>@log.Source</td>
+                <td>@log.Timestamp</td>
+            </tr>
+        }
+    </tbody>
+</table>
