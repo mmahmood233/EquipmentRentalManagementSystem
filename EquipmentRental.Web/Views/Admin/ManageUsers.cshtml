@@ -7,6 +7,7 @@
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Actions</th> <!-- new header -->
         </tr>
     </thead>
     <tbody>
@@ -16,6 +17,14 @@
                 <td>@user.FullName</td>
                 <td>@user.Email</td>
                 <td>@user.Role?.RoleName</td>
+                <td>
+                    <a asp-action="EditRole" asp-route-id="@user.UserId" class="btn btn-sm btn-outline-primary">Edit Role</a>
+                </td>
+                <td>
+                    <a asp-action="EditRole" asp-route-id="@user.UserId" class="btn btn-sm btn-outline-primary me-2">Edit Role</a>
+                    <a asp-action="ResetPassword" asp-route-id="@user.UserId" class="btn btn-sm btn-outline-warning">Reset Password</a>
+                </td>
+
             </tr>
         }
     </tbody>

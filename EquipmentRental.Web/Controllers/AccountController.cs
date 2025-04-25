@@ -77,6 +77,7 @@ public class AccountController : Controller
 
         if (user == null)
         {
+            await LogAction("Failed login attempt");
             ModelState.AddModelError("", "Invalid login.");
             return View(model);
         }
@@ -93,6 +94,7 @@ public class AccountController : Controller
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+        await LogAction("Login");
 
         return RedirectToAction("Index", "Home");
     }
@@ -102,6 +104,7 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
+        await LogAction("Logout");
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction("Login", "Account");
     }
@@ -147,7 +150,6 @@ public class AccountController : Controller
         user.FullName = model.FullName;
         user.Email = model.Email;
 
-        // If user wants to change password
         if (!string.IsNullOrEmpty(model.CurrentPassword) &&
             !string.IsNullOrEmpty(model.NewPassword) &&
             model.NewPassword == model.ConfirmPassword)
@@ -164,8 +166,27 @@ public class AccountController : Controller
 
         _context.Users.Update(user);
         await _context.SaveChangesAsync();
+        await LogAction("Profile updated");
 
         ViewBag.Message = "Profile updated successfully.";
         return View(model);
+    }
+
+    private async Task LogAction(string action, string? exception = null)
+    {
+        var userId = User.Identity.IsAuthenticated
+            ? int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0")
+            : (int?)null;
+
+        _context.Logs.Add(new Log
+        {
+            UserId = userId,
+            Action = action,
+            Exception = exception,
+            Source = "Web",
+            Timestamp = DateTime.Now
+        });
+
+        await _context.SaveChangesAsync();
     }
 }
