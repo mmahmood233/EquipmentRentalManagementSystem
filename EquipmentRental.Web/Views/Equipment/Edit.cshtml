@@ -1,0 +1,60 @@
+﻿@model EquipmentRental.DataAccess.Models.Equipment
+
+@{
+    ViewData["Title"] = "Edit Equipment";
+}
+
+<div class="container mt-5">
+    <h2 class="mb-4">Edit Equipment</h2>
+
+    <form asp-action="Edit" method="post">
+        <input type="hidden" asp-for="EquipmentId" />
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select asp-for="CategoryId" class="form-select" asp-items="@(new SelectList(ViewBag.Categories, "CategoryId", "CategoryName"))">
+                <option value="">-- Select Category --</option>
+            </select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="RentalPrice" class="form-label"></label>
+            <input asp-for="RentalPrice" class="form-control" />
+            <span asp-validation-for="RentalPrice" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="AvailabilityStatus" class="form-label"></label>
+            <input asp-for="AvailabilityStatus" class="form-control" />
+            <span asp-validation-for="AvailabilityStatus" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ConditionStatus" class="form-label"></label>
+            <input asp-for="ConditionStatus" class="form-control" />
+            <span asp-validation-for="ConditionStatus" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
