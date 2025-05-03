@@ -1,4 +1,4 @@
-﻿using EquipmentRental.DataAccess.Models;
+using EquipmentRental.DataAccess.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -43,6 +43,7 @@ public class CategoryController : Controller
         {
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
+            TempData["Success"] = "Category created successfully!";
             return RedirectToAction(nameof(Index));
         }
         return View(category);
@@ -66,9 +67,18 @@ public class CategoryController : Controller
 
         if (ModelState.IsValid)
         {
-            _context.Categories.Update(category);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                _context.Categories.Update(category);
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Category updated successfully!";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error updating category: {ex.Message}");
+                return View(category);
+            }
         }
         return View(category);
     }
@@ -80,8 +90,25 @@ public class CategoryController : Controller
         var category = await _context.Categories.FindAsync(id);
         if (category == null) return NotFound();
 
-        _context.Categories.Remove(category);
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
+        try
+        {
+            // Check if category is in use by any equipment
+            var equipmentUsingCategory = await _context.Equipment.AnyAsync(e => e.CategoryId == id);
+            if (equipmentUsingCategory)
+            {
+                TempData["Error"] = "Cannot delete this category because it is being used by equipment items.";
+                return RedirectToAction(nameof(Index));
+            }
+            
+            _context.Categories.Remove(category);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Category deleted successfully!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"Error deleting category: {ex.Message}";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }
