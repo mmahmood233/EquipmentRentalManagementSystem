@@ -1,0 +1,24 @@
+﻿@model EquipmentRental.Web.Models.Admin.EditUserRoleViewModel
+
+@{
+    ViewData["Title"] = "Edit User Role";
+}
+
+<h2>Edit Role - @Model.FullName</h2>
+
+<form asp-action="EditRole" method="post">
+    <input type="hidden" asp-for="UserId" />
+
+    <div class="mb-3">
+        <label>Email</label>
+        <input class="form-control" asp-for="Email" readonly />
+    </div>
+
+    <div class="mb-3">
+        <label>Role</label>
+        <select class="form-control" asp-for="SelectedRoleId" asp-items="@(new SelectList(Model.AvailableRoles, "RoleId", "RoleName"))"></select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a asp-action="Users" class="btn btn-secondary">Cancel</a>
+</form>
