@@ -1,0 +1,467 @@
+using EquipmentRental.DataAccess.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Diagnostics;
+
+[Authorize]
+public class RentalRequestController : Controller
+{
+    private readonly EquipmentRentalDbContext _context;
+
+    public RentalRequestController(EquipmentRentalDbContext context)
+    {
+        _context = context;
+    }
+
+    // GET: /RentalRequest
+    public async Task<IActionResult> Index(string search = null, string status = null)
+    {
+        // Get current user info
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "Unknown";
+        var isCustomer = User.IsInRole("Customer");
+        var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator") || User.IsInRole("Admin");
+        
+        Debug.WriteLine($"User ID: {userId}, Role: {userRole}, IsCustomer: {isCustomer}, IsManager: {isManager}");
+
+        // Start with base query
+        var query = _context.RentalRequests
+            .Include(r => r.Equipment)
+            .Include(r => r.Customer)
+            .AsQueryable();
+
+        // Log the total number of rental requests in the database
+        var totalRequests = await _context.RentalRequests.CountAsync();
+        Debug.WriteLine($"Total rental requests in database: {totalRequests}");
+
+        // Apply role-based filtering - modified to ensure all users can see their own requests
+        if (!isManager) // If not a manager, only show own requests regardless of role
+        {
+            // All non-managers can only see their own requests
+            query = query.Where(r => r.CustomerId == userId);
+            Debug.WriteLine($"Filtering for user {userId}'s requests only (not a manager)");
+        }
+        else
+        {
+            Debug.WriteLine("No user-specific filtering applied (user is a manager)");
+        }
+
+        // Apply search filter if provided
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(r => 
+                r.Equipment.Name.Contains(search) || 
+                r.Description.Contains(search));
+        }
+
+        // Apply status filter if provided
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(r => r.Status == status);
+        }
+
+        // Get final results
+        var list = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
+        
+        // Log the number of results for debugging
+        Debug.WriteLine($"Found {list.Count} rental requests");
+        
+        return View(list);
+    }
+
+    // GET: /RentalRequest/Create
+    [Authorize] // Allow any authenticated user to create rental requests
+    public async Task<IActionResult> Create()
+    {
+        // Only show available equipment
+        ViewBag.EquipmentList = await _context.Equipment
+            .Where(e => e.AvailabilityStatus == "Available")
+            .ToListAsync();
+            
+        Debug.WriteLine($"Found {ViewBag.EquipmentList.Count} available equipment items");
+        return View();
+    }
+
+    // POST: /RentalRequest/Create
+    [Authorize] // Allow any authenticated user to create rental requests
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(int EquipmentId, DateTime RentalStartDate, DateTime RentalEndDate, decimal TotalCost, string Description)
+    {
+        // Log form submission values for debugging
+        Debug.WriteLine("== RentalRequest Form Submission Received ==");
+        Debug.WriteLine($"EquipmentId: {EquipmentId}");
+        Debug.WriteLine($"RentalStartDate: {RentalStartDate}");
+        Debug.WriteLine($"RentalEndDate: {RentalEndDate}");
+        Debug.WriteLine($"TotalCost: {TotalCost}");
+        Debug.WriteLine($"Description: {Description}");
+
+        // Basic validation
+        if (EquipmentId <= 0)
+        {
+            ModelState.AddModelError("EquipmentId", "Please select an equipment");
+        }
+        else
+        {
+            // Verify equipment exists and is available
+            var equipment = await _context.Equipment.FindAsync(EquipmentId);
+            if (equipment == null)
+            {
+                ModelState.AddModelError("EquipmentId", "Selected equipment does not exist");
+            }
+            else if (equipment.AvailabilityStatus != "Available")
+            {
+                ModelState.AddModelError("EquipmentId", "Selected equipment is not available for rental");
+            }
+        }
+
+        if (RentalStartDate == default)
+        {
+            ModelState.AddModelError("RentalStartDate", "Start date is required");
+        }
+        else if (RentalStartDate < DateTime.Today)
+        {
+            ModelState.AddModelError("RentalStartDate", "Start date cannot be in the past");
+        }
+
+        if (RentalEndDate == default)
+        {
+            ModelState.AddModelError("RentalEndDate", "End date is required");
+        }
+        else if (RentalEndDate < RentalStartDate)
+        {
+            ModelState.AddModelError("RentalEndDate", "End date must be after start date");
+        }
+
+        if (TotalCost <= 0)
+        {
+            ModelState.AddModelError("TotalCost", "Total cost must be greater than zero");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            ViewBag.EquipmentList = await _context.Equipment.Where(e => e.AvailabilityStatus == "Available").ToListAsync();
+            var model = new RentalRequest
+            {
+                EquipmentId = EquipmentId,
+                RentalStartDate = RentalStartDate,
+                RentalEndDate = RentalEndDate,
+                TotalCost = TotalCost,
+                Description = Description
+            };
+            return View(model);
+        }
+
+        try
+        {
+            // Get current user ID (customer)
+            var customerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            
+            // Create a new rental request
+            var rentalRequest = new RentalRequest
+            {
+                CustomerId = customerId,
+                EquipmentId = EquipmentId,
+                RentalStartDate = RentalStartDate,
+                RentalEndDate = RentalEndDate,
+                TotalCost = TotalCost,
+                Description = Description,
+                Status = "Pending",
+                CreatedAt = DateTime.Now
+            };
+
+            // Save to database
+            _context.RentalRequests.Add(rentalRequest);
+            int affected = await _context.SaveChangesAsync();
+            Debug.WriteLine($"✅ Rental request saved successfully. Affected rows: {affected}");
+
+            // Redirect with success message
+            TempData["Success"] = "Rental request submitted successfully!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            Debug.WriteLine($"❌ Error saving rental request: {ex.Message}");
+            Debug.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            
+            // Add error message and return to form
+            ModelState.AddModelError("", $"Error submitting rental request: {ex.Message}");
+            ViewBag.EquipmentList = await _context.Equipment.Where(e => e.AvailabilityStatus == "Available").ToListAsync();
+            
+            var model = new RentalRequest
+            {
+                EquipmentId = EquipmentId,
+                RentalStartDate = RentalStartDate,
+                RentalEndDate = RentalEndDate,
+                TotalCost = TotalCost,
+                Description = Description
+            };
+            return View(model);
+        }
+    }
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var request = await _context.RentalRequests
+            .Include(r => r.Equipment)
+            .Include(r => r.Customer)
+            .FirstOrDefaultAsync(r => r.RentalRequestId == id);
+
+        if (request == null)
+        {
+            TempData["Error"] = "Rental request not found.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+        var isCustomer = User.IsInRole("Customer");
+        var isManager = User.IsInRole("Manager");
+
+        Debug.WriteLine($"Edit request - User ID: {userId}, IsCustomer: {isCustomer}, IsManager: {isManager}");
+        Debug.WriteLine($"Request ID: {id}, Status: {request.Status}, CustomerId: {request.CustomerId}");
+
+        // Access control
+        // 1. Managers can edit any request
+        // 2. Customers can only edit their own requests
+        if (isCustomer && !isManager && request.CustomerId != userId)
+        {
+            Debug.WriteLine("Access denied: Customer trying to edit someone else's request");
+            TempData["Error"] = "You can only edit your own rental requests.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // 3. Customers can only edit if status is still Pending
+        if (isCustomer && !isManager && request.Status != "Pending")
+        {
+            Debug.WriteLine("Access denied: Customer trying to edit a non-pending request");
+            TempData["Error"] = "You can only edit requests that are still pending.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Prepare view data
+        ViewBag.AvailableEquipment = await _context.Equipment
+            .Where(e => e.AvailabilityStatus == "Available" || e.EquipmentId == request.EquipmentId)
+            .ToListAsync();
+        ViewBag.IsManager = isManager;
+        ViewBag.IsCustomer = isCustomer;
+        ViewBag.EditableStatuses = new[] { "Pending", "Approved", "Rejected", "Confirmed", "Picked-up", "Returned" };
+
+        return View(request);
+    }
+
+    [Authorize]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int RentalRequestId, int? EquipmentId, DateTime? RentalStartDate, 
+        DateTime? RentalEndDate, decimal? TotalCost, string Description, string Status)
+    {
+        Debug.WriteLine($"Edit POST - Request ID: {RentalRequestId}");
+        Debug.WriteLine($"EquipmentId: {EquipmentId}, Status: {Status}, Description: {Description}");
+        
+        // Get the existing request
+        var request = await _context.RentalRequests
+            .Include(r => r.Equipment)
+            .FirstOrDefaultAsync(r => r.RentalRequestId == RentalRequestId);
+            
+        if (request == null)
+        {
+            TempData["Error"] = "Rental request not found.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Access control checks
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+        var isCustomer = User.IsInRole("Customer");
+        var isManager = User.IsInRole("Manager");
+
+        // 1. Customers can only edit their own requests
+        if (isCustomer && !isManager && request.CustomerId != userId)
+        {
+            TempData["Error"] = "You can only edit your own rental requests.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // 2. Customers can only edit pending requests
+        if (isCustomer && !isManager && request.Status != "Pending")
+        {
+            TempData["Error"] = "You can only edit requests that are still pending.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            // Manager can update everything
+            if (isManager)
+            {
+                // Update equipment if changed
+                if (EquipmentId.HasValue && EquipmentId.Value != request.EquipmentId)
+                {
+                    // Verify new equipment exists
+                    var equipment = await _context.Equipment.FindAsync(EquipmentId.Value);
+                    if (equipment == null)
+                    {
+                        ModelState.AddModelError("EquipmentId", "Selected equipment does not exist");
+                    }
+                    else
+                    {
+                        request.EquipmentId = EquipmentId.Value;
+                    }
+                }
+
+                // Update dates and cost
+                if (RentalStartDate.HasValue)
+                    request.RentalStartDate = RentalStartDate.Value;
+                    
+                if (RentalEndDate.HasValue)
+                    request.RentalEndDate = RentalEndDate.Value;
+                    
+                if (TotalCost.HasValue)
+                    request.TotalCost = TotalCost.Value;
+                    
+                // Update status if provided
+                if (!string.IsNullOrEmpty(Status))
+                {
+                    string oldStatus = request.Status;
+                    request.Status = Status;
+                    
+                    // If status changed to Approved, update equipment availability
+                    if (oldStatus != "Approved" && Status == "Approved")
+                    {
+                        var equipment = await _context.Equipment.FindAsync(request.EquipmentId);
+                        if (equipment != null)
+                        {
+                            equipment.AvailabilityStatus = "Reserved";
+                            _context.Update(equipment);
+                        }
+                    }
+                }
+            }
+            
+            // Both customer and manager can update description
+            if (!string.IsNullOrEmpty(Description))
+                request.Description = Description;
+
+            // Save changes
+            _context.Update(request);
+            await _context.SaveChangesAsync();
+            
+            TempData["Success"] = "Rental request updated successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating rental request: {ex.Message}");
+            TempData["Error"] = $"Error updating rental request: {ex.Message}";
+            
+            // Redirect back to edit form
+            return RedirectToAction(nameof(Edit), new { id = RentalRequestId });
+        }
+    }
+    // GET: RentalRequest/Delete/5
+    [Authorize]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        var request = await _context.RentalRequests
+            .Include(r => r.Equipment)
+            .Include(r => r.Customer)
+            .FirstOrDefaultAsync(r => r.RentalRequestId == id);
+
+        if (request == null) return NotFound();
+
+        // Only allow owner or manager/admin
+        bool isManagerOrAdmin = userRole == "Manager" || userRole == "Administrator" || userRole == "Admin";
+        if (!isManagerOrAdmin && request.CustomerId != userId)
+            return Forbid();
+
+        return View(request);
+    }
+
+    // POST: RentalRequest/Delete/5
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    [Authorize]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        var request = await _context.RentalRequests.FindAsync(id);
+        if (request == null) return NotFound();
+
+        bool isManagerOrAdmin = userRole == "Manager" || userRole == "Administrator" || userRole == "Admin";
+        if (!isManagerOrAdmin && request.CustomerId != userId)
+            return Forbid();
+
+        _context.RentalRequests.Remove(request);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = "Rental Request deleted successfully.";
+        return RedirectToAction("Index");
+    }
+
+    // GET: RentalRequest/Approve/5
+    [Authorize(Roles = "Manager,Administrator,Admin")]
+    public async Task<IActionResult> Approve(int id)
+    {
+        var request = await _context.RentalRequests
+            .Include(r => r.Equipment)
+            .FirstOrDefaultAsync(r => r.RentalRequestId == id);
+
+        if (request == null) return NotFound();
+
+        // Only pending requests can be approved
+        if (request.Status != "Pending")
+        {
+            TempData["Error"] = "Only pending requests can be approved.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Update request status
+        request.Status = "Approved";
+        _context.Update(request);
+        await _context.SaveChangesAsync();
+
+        // Update equipment availability status
+        var equipment = await _context.Equipment.FindAsync(request.EquipmentId);
+        if (equipment != null)
+        {
+            equipment.AvailabilityStatus = "Reserved";
+            _context.Update(equipment);
+            await _context.SaveChangesAsync();
+        }
+
+        TempData["Success"] = "Rental request approved successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // GET: RentalRequest/Reject/5
+    [Authorize(Roles = "Manager,Administrator,Admin")]
+    public async Task<IActionResult> Reject(int id)
+    {
+        var request = await _context.RentalRequests.FindAsync(id);
+
+        if (request == null) return NotFound();
+
+        // Only pending requests can be rejected
+        if (request.Status != "Pending")
+        {
+            TempData["Error"] = "Only pending requests can be rejected.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Update request status
+        request.Status = "Rejected";
+        _context.Update(request);
+        await _context.SaveChangesAsync();
+
+        TempData["Success"] = "Rental request rejected successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+}

@@ -1,4 +1,4 @@
-﻿using EquipmentRental.DataAccess.Models;
+using EquipmentRental.DataAccess.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,27 +14,25 @@ public class EquipmentController : Controller
     }
 
     [AllowAnonymous]
-    public async Task<IActionResult> Index(string search, int? categoryId)
+    public async Task<IActionResult> Index(string? search, int? categoryId)
     {
         ViewBag.Categories = await _context.Categories.ToListAsync();
 
-        var equipmentQuery = _context.Equipment.Include(e => e.Category).AsQueryable();
+        var query = _context.Equipment.Include(e => e.Category).AsQueryable();
 
-        if (!string.IsNullOrEmpty(search))
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            equipmentQuery = equipmentQuery.Where(e =>
-                e.Name.Contains(search) || e.Description.Contains(search));
+            query = query.Where(e => e.Name.Contains(search) || e.Description.Contains(search));
         }
 
         if (categoryId.HasValue)
         {
-            equipmentQuery = equipmentQuery.Where(e => e.CategoryId == categoryId.Value);
+            query = query.Where(e => e.CategoryId == categoryId);
         }
 
-        var equipmentList = await equipmentQuery.ToListAsync();
+        var equipmentList = await query.ToListAsync();
         return View(equipmentList);
     }
-
 
     [Authorize(Roles = "Administrator,Manager")]
     [HttpGet]
@@ -43,25 +41,130 @@ public class EquipmentController : Controller
         ViewBag.Categories = await _context.Categories.ToListAsync();
         return View();
     }
+    
+    // Test action to directly insert a record
+    [HttpGet]
+    public async Task<IActionResult> TestInsert()
+    {
+        try
+        {
+            // Create a test equipment record
+            var equipment = new Equipment
+            {
+                Name = "Test Equipment",
+                Description = "Test Description",
+                CategoryId = 1, // Make sure this category exists
+                RentalPrice = 10.00m,
+                AvailabilityStatus = "Available",
+                ConditionStatus = "New",
+                CreatedAt = DateTime.Now
+            };
+            
+            // Add to database
+            _context.Equipment.Add(equipment);
+            var affected = await _context.SaveChangesAsync();
+            
+            return Content($"Successfully inserted test equipment. Affected rows: {affected}");
+        }
+        catch (Exception ex)
+        {
+            return Content($"Error inserting test equipment: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
 
-    [Authorize(Roles = "Administrator,Manager")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Equipment equipment)
+    [Authorize(Roles = "Administrator,Manager")]
+    public async Task<IActionResult> Create(string Name, string Description, int CategoryId, decimal RentalPrice, string AvailabilityStatus, string ConditionStatus)
     {
+        // Log form submission values for debugging
+        Console.WriteLine("== Form Submission Received (Direct Parameters) ==");
+        Console.WriteLine($"Name: {Name}");
+        Console.WriteLine($"Description: {Description}");
+        Console.WriteLine($"CategoryId: {CategoryId}");
+        Console.WriteLine($"RentalPrice: {RentalPrice}");
+        Console.WriteLine($"AvailabilityStatus: {AvailabilityStatus}");
+        Console.WriteLine($"ConditionStatus: {ConditionStatus}");
+
+        // Basic validation
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            ModelState.AddModelError("Name", "Name is required");
+        }
+
+        if (CategoryId <= 0)
+        {
+            ModelState.AddModelError("CategoryId", "Please select a valid category");
+        }
+
+        if (RentalPrice <= 0)
+        {
+            ModelState.AddModelError("RentalPrice", "Rental price must be greater than zero");
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Categories = await _context.Categories.ToListAsync();
+            var equipment = new Equipment
+            {
+                Name = Name,
+                Description = Description,
+                CategoryId = CategoryId,
+                RentalPrice = RentalPrice,
+                AvailabilityStatus = AvailabilityStatus,
+                ConditionStatus = ConditionStatus
+            };
             return View(equipment);
         }
 
-        equipment.CreatedAt = DateTime.Now;
-        _context.Equipment.Add(equipment);
-        await _context.SaveChangesAsync();
+        try
+        {
+            // Create a new equipment object directly
+            var equipment = new Equipment
+            {
+                Name = Name,
+                Description = Description,
+                CategoryId = CategoryId,
+                RentalPrice = RentalPrice,
+                AvailabilityStatus = string.IsNullOrEmpty(AvailabilityStatus) ? "Available" : AvailabilityStatus,
+                ConditionStatus = string.IsNullOrEmpty(ConditionStatus) ? "New" : ConditionStatus,
+                CreatedAt = DateTime.Now
+            };
 
-        TempData["Success"] = "Equipment added successfully!";
-        return RedirectToAction("Index");
+            // Save to database
+            _context.Equipment.Add(equipment);
+            int affected = await _context.SaveChangesAsync();
+            Console.WriteLine($"✅ Equipment saved successfully. Affected rows: {affected}");
+
+            // Redirect with success message
+            TempData["Success"] = "Equipment added successfully!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            Console.WriteLine($"❌ Error saving equipment: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            
+            // Add error message and return to form
+            ModelState.AddModelError("", $"Error saving equipment: {ex.Message}");
+            ViewBag.Categories = await _context.Categories.ToListAsync();
+            
+            var equipment = new Equipment
+            {
+                Name = Name,
+                Description = Description,
+                CategoryId = CategoryId,
+                RentalPrice = RentalPrice,
+                AvailabilityStatus = AvailabilityStatus,
+                ConditionStatus = ConditionStatus
+            };
+            return View(equipment);
+        }
     }
+
+
+
 
     [Authorize(Roles = "Administrator,Manager")]
     [HttpGet]
@@ -80,19 +183,100 @@ public class EquipmentController : Controller
     [Authorize(Roles = "Administrator,Manager")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Equipment equipment)
+    public async Task<IActionResult> Edit(int EquipmentId, string Name, string Description, int CategoryId, decimal RentalPrice, string AvailabilityStatus, string ConditionStatus)
     {
+        // Log form submission values for debugging
+        Console.WriteLine("== Edit Form Submission Received (Direct Parameters) ==");
+        Console.WriteLine($"EquipmentId: {EquipmentId}");
+        Console.WriteLine($"Name: {Name}");
+        Console.WriteLine($"Description: {Description}");
+        Console.WriteLine($"CategoryId: {CategoryId}");
+        Console.WriteLine($"RentalPrice: {RentalPrice}");
+        Console.WriteLine($"AvailabilityStatus: {AvailabilityStatus}");
+        Console.WriteLine($"ConditionStatus: {ConditionStatus}");
+
+        // Find the existing equipment
+        var existingEquipment = await _context.Equipment.FindAsync(EquipmentId);
+        if (existingEquipment == null)
+        {
+            return NotFound();
+        }
+
+        // Basic validation
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            ModelState.AddModelError("Name", "Name is required");
+        }
+
+        if (CategoryId <= 0)
+        {
+            ModelState.AddModelError("CategoryId", "Please select a valid category");
+        }
+
+        if (RentalPrice <= 0)
+        {
+            ModelState.AddModelError("RentalPrice", "Rental price must be greater than zero");
+        }
+
         if (!ModelState.IsValid)
         {
             ViewBag.Categories = await _context.Categories.ToListAsync();
+            var equipment = new Equipment
+            {
+                EquipmentId = EquipmentId,
+                Name = Name,
+                Description = Description,
+                CategoryId = CategoryId,
+                RentalPrice = RentalPrice,
+                AvailabilityStatus = AvailabilityStatus,
+                ConditionStatus = ConditionStatus,
+                CreatedAt = existingEquipment.CreatedAt
+            };
             return View(equipment);
         }
 
-        _context.Equipment.Update(equipment);
-        await _context.SaveChangesAsync();
+        try
+        {
+            // Update the existing equipment
+            existingEquipment.Name = Name;
+            existingEquipment.Description = Description;
+            existingEquipment.CategoryId = CategoryId;
+            existingEquipment.RentalPrice = RentalPrice;
+            existingEquipment.AvailabilityStatus = string.IsNullOrEmpty(AvailabilityStatus) ? "Available" : AvailabilityStatus;
+            existingEquipment.ConditionStatus = string.IsNullOrEmpty(ConditionStatus) ? "New" : ConditionStatus;
+            
+            // Save to database
+            _context.Equipment.Update(existingEquipment);
+            int affected = await _context.SaveChangesAsync();
+            Console.WriteLine($"✅ Equipment updated successfully. Affected rows: {affected}");
 
-        TempData["Success"] = "Equipment updated successfully!";
-        return RedirectToAction("Index");
+            // Redirect with success message
+            TempData["Success"] = "Equipment updated successfully!";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            Console.WriteLine($"❌ Error updating equipment: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            
+            // Add error message and return to form
+            ModelState.AddModelError("", $"Error updating equipment: {ex.Message}");
+            ViewBag.Categories = await _context.Categories.ToListAsync();
+            
+            var equipment = new Equipment
+            {
+                EquipmentId = EquipmentId,
+                Name = Name,
+                Description = Description,
+                CategoryId = CategoryId,
+                RentalPrice = RentalPrice,
+                AvailabilityStatus = AvailabilityStatus,
+                ConditionStatus = ConditionStatus,
+                CreatedAt = existingEquipment.CreatedAt
+            };
+            return View(equipment);
+        }
     }
 
     [Authorize(Roles = "Administrator,Manager")]
