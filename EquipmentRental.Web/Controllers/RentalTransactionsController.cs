@@ -9,7 +9,7 @@ using EquipmentRental.DataAccess.Models;
 using Microsoft.AspNetCore.Authorization;
 namespace EquipmentRental.Web.Controllers
 {
-    [Authorize(Roles = "Customer,Manager,Administrator")]
+    
     public class RentalTransactionsController : Controller
 
     {
@@ -34,7 +34,7 @@ namespace EquipmentRental.Web.Controllers
                 .Include(r => r.Equipment)
                 .Include(r => r.RentalRequest);
 
-            if (user.Role.RoleName == "Customer")
+            if (user.RoleId == 3) // 3 = Customer
             {
                 query = query.Where(r => r.Customer.Email == userEmail);
             }
@@ -65,7 +65,7 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions/Create
-        [Authorize(Roles = "Manager,Administrator")]
+    
         public IActionResult Create()
         {
             ViewData["CustomerId"] = new SelectList(_context.Users, "UserId", "Email");
@@ -92,7 +92,7 @@ namespace EquipmentRental.Web.Controllers
             ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Status", rentalTransaction.RentalRequestId);
             return View(rentalTransaction);
         }
-        [Authorize(Roles = "Manager,Administrator")]
+       
 
         // GET: RentalTransactions/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -150,7 +150,7 @@ namespace EquipmentRental.Web.Controllers
             ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Status", rentalTransaction.RentalRequestId);
             return View(rentalTransaction);
         }
-        [Authorize(Roles = "Manager,Administrator")]
+      
 
         // GET: RentalTransactions/Delete/5
         public async Task<IActionResult> Delete(int? id)
