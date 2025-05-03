@@ -78,11 +78,16 @@
             <td>
                 @Html.DisplayFor(modelItem => item.RentalRequest.Status)
             </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.RentalTransactionId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.RentalTransactionId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.RentalTransactionId">Delete</a>
+               <td>
+                @Html.ActionLink("Details", "Details", new { id = item.RentalTransactionId })
+
+                @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
+                {
+                    @: | @Html.ActionLink("Edit", "Edit", new { id = item.RentalTransactionId })
+                    @: | @Html.ActionLink("Delete", "Delete", new { id = item.RentalTransactionId })
+                }
             </td>
+
         </tr>
 }
     </tbody>
