@@ -36,67 +36,31 @@ public class AdminController : Controller
         return View();
     }
 
-    // View audit logs with filtering and pagination
-    public async Task<IActionResult> Logs(string user = null, string action = null, string source = null, 
-        string date = null, int page = 1, int pageSize = 20)
+    // View audit logs
+    public IActionResult Logs()
     {
-        // Start with base query
-        var query = _context.Logs
-            .Include(l => l.User)
-            .AsQueryable();
+        // Get all logs directly from the database
+        var logs = _context.Logs.ToList();
 
-        // Apply filters if provided
-        if (!string.IsNullOrWhiteSpace(user))
+        // Try to load user information for logs
+        var users = _context.Users.ToDictionary(u => u.UserId);
+        
+        // Set user information for each log if available
+        foreach (var log in logs)
         {
-            query = query.Where(l => l.User.FullName.Contains(user));
+            if (log.UserId.HasValue && users.ContainsKey(log.UserId.Value))
+            {
+                log.User = users[log.UserId.Value];
+            }
         }
-
-        if (!string.IsNullOrWhiteSpace(action))
-        {
-            query = query.Where(l => l.Action == action);
-        }
-
-        if (!string.IsNullOrWhiteSpace(source))
-        {
-            query = query.Where(l => l.Source == source);
-        }
-
-        if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var dateValue))
-        {
-            var nextDay = dateValue.AddDays(1);
-            query = query.Where(l => l.Timestamp >= dateValue && l.Timestamp < nextDay);
-        }
-
-        // Order by timestamp (newest first)
-        query = query.OrderByDescending(l => l.Timestamp);
-
-        // Calculate pagination values
-        var totalItems = await query.CountAsync();
-        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-        page = Math.Max(1, Math.Min(page, totalPages));
-
-        // Get the logs for the current page
-        var logs = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        // Set pagination values for the view
-        ViewBag.CurrentPage = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalPages = Math.Max(1, totalPages);
-        ViewBag.TotalItems = totalItems;
-
-        // Build query string for pagination links
-        var queryString = "";
-        if (!string.IsNullOrWhiteSpace(user)) queryString += $"&user={Uri.EscapeDataString(user)}";
-        if (!string.IsNullOrWhiteSpace(action)) queryString += $"&action={Uri.EscapeDataString(action)}";
-        if (!string.IsNullOrWhiteSpace(source)) queryString += $"&source={Uri.EscapeDataString(source)}";
-        if (!string.IsNullOrWhiteSpace(date)) queryString += $"&date={Uri.EscapeDataString(date)}";
-        ViewBag.QueryString = queryString;
-
+        
+        // Sort logs by timestamp (newest first)
+        logs = logs.OrderByDescending(l => l.Timestamp).ToList();
+        
         return View(logs);
     }
+
+
 
     // Manage user list with search functionality
     public async Task<IActionResult> ManageUsers(string search = null, int? role = null)
