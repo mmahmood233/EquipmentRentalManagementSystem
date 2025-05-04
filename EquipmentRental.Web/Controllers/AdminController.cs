@@ -27,11 +27,34 @@ public class AdminController : Controller
         ViewBag.CategoryCount = await _context.Categories.CountAsync();
         
         // Get recent activity logs (top 5)
-        ViewBag.RecentLogs = await _context.Logs
-            .Include(l => l.User)
+        var recentLogs = await _context.Logs
             .OrderByDescending(l => l.Timestamp)
             .Take(5)
-            .ToListAsync();
+            .ToListAsync() ?? new List<Log>();
+
+        try
+        {
+            // Load user information for logs that have a valid UserId
+            var userIds = recentLogs.Where(l => l.UserId.HasValue).Select(l => l.UserId.Value).Distinct().ToList();
+            if (userIds.Any())
+            {
+                var users = await _context.Users.Where(u => userIds.Contains(u.UserId)).ToDictionaryAsync(u => u.UserId, u => u);
+                foreach (var log in recentLogs.Where(l => l.UserId.HasValue))
+                {
+                    if (users.TryGetValue(log.UserId.Value, out var user))
+                    {
+                        log.User = user;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the exception but continue - don't let user loading issues break the dashboard
+            System.Diagnostics.Debug.WriteLine($"Error loading users for logs: {ex.Message}");
+        }
+        
+        ViewBag.RecentLogs = recentLogs;
             
         return View();
     }
