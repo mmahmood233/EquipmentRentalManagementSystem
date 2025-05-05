@@ -1,11 +1,9 @@
-@{
-    ViewData["Title"] = "Admin Dashboard";
-}
-@model dynamic
+@using EquipmentRental.DataAccess.Models
 
 @{
     ViewData["Title"] = "Admin Dashboard";
 }
+@model dynamic
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="bi bi-speedometer2"></i> Admin Dashboard</h2>
@@ -160,15 +158,28 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (ViewBag.RecentLogs != null && ViewBag.RecentLogs.Count > 0)
+                            @if (ViewBag.RecentLogs != null)
                             {
-                                @foreach (var log in ViewBag.RecentLogs)
+                                @foreach (var log in ViewBag.RecentLogs as IEnumerable<Log> ?? new List<Log>())
                                 {
                                     <tr>
-                                        <td>@log.User?.FullName</td>
-                                        <td>@log.Action</td>
-                                        <td>@log.Source</td>
-                                        <td>@log.Timestamp.ToString("g")</td>
+                                        <td>
+                                            @if (log?.User != null)
+                                            {
+                                                <span class="badge bg-info text-dark">@log.User.FullName</span>
+                                            }
+                                            else if (log?.UserId.HasValue == true)
+                                            {
+                                                <span class="badge bg-warning text-dark">User ID: @log.UserId</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">System</span>
+                                            }
+                                        </td>
+                                        <td>@(log?.Action ?? "Unknown")</td>
+                                        <td>@(log?.Source ?? "Unknown")</td>
+                                        <td>@(log?.Timestamp.ToString("g") ?? "Unknown")</td>
                                     </tr>
                                 }
                             }

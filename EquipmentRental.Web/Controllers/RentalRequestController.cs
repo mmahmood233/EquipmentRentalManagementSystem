@@ -253,85 +253,77 @@ public class RentalRequestController : Controller
         return View(request);
     }
 
-    [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int RentalRequestId, int? EquipmentId, DateTime? RentalStartDate, 
-        DateTime? RentalEndDate, decimal? TotalCost, string Description, string Status)
+    [Authorize]
+    public async Task<IActionResult> Edit(int RentalRequestId, string Description, string Status)
     {
-        Debug.WriteLine($"Edit POST - Request ID: {RentalRequestId}");
-        Debug.WriteLine($"EquipmentId: {EquipmentId}, Status: {Status}, Description: {Description}");
-        
-        // Get the existing request
-        var request = await _context.RentalRequests
+        // Log form submission values for debugging
+        Debug.WriteLine("== RentalRequest Edit Form Submission Received ==");
+        Debug.WriteLine($"RentalRequestId: {RentalRequestId}");
+        Debug.WriteLine($"Description: {Description}");
+        Debug.WriteLine($"Status: {Status}");
+
+        // Find the existing rental request
+        var existingRequest = await _context.RentalRequests
             .Include(r => r.Equipment)
+            .Include(r => r.Customer)
             .FirstOrDefaultAsync(r => r.RentalRequestId == RentalRequestId);
-            
-        if (request == null)
+
+        if (existingRequest == null)
         {
-            TempData["Error"] = "Rental request not found.";
-            return RedirectToAction(nameof(Index));
+            return NotFound();
         }
 
-        // Access control checks
+        // Get current user info
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-        var isCustomer = User.IsInRole("Customer");
-        var isManager = User.IsInRole("Manager");
+        var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator") || User.IsInRole("Admin");
 
-        // 1. Customers can only edit their own requests
-        if (isCustomer && !isManager && request.CustomerId != userId)
+        // Check if user is authorized to edit this request
+        if (!isManager && existingRequest.CustomerId != userId)
         {
-            TempData["Error"] = "You can only edit your own rental requests.";
-            return RedirectToAction(nameof(Index));
+            return Forbid();
         }
-
-        // 2. Customers can only edit pending requests
-        if (isCustomer && !isManager && request.Status != "Pending")
+        
+        // For customers, only allow description updates if request is still pending
+        if (!isManager && existingRequest.CustomerId == userId)
         {
-            TempData["Error"] = "You can only edit requests that are still pending.";
+            // Check if request status allows customer updates
+            string currentStatus = existingRequest.Status?.ToLower() ?? "";
+            bool canUpdate = currentStatus == "pending" || currentStatus == "" || currentStatus == "draft";
+            
+            if (!canUpdate)
+            {
+                TempData["Error"] = "You can only update the description of pending requests.";
+                return RedirectToAction(nameof(Index));
+            }
+            
+            // Customers can only update the description
+            existingRequest.Description = Description;
+            _context.Update(existingRequest);
+            await _context.SaveChangesAsync();
+            
+            TempData["Success"] = "Request description updated successfully.";
             return RedirectToAction(nameof(Index));
         }
 
         try
         {
-            // Manager can update everything
+            // For managers, allow full updates
             if (isManager)
             {
-                // Update equipment if changed
-                if (EquipmentId.HasValue && EquipmentId.Value != request.EquipmentId)
-                {
-                    // Verify new equipment exists
-                    var equipment = await _context.Equipment.FindAsync(EquipmentId.Value);
-                    if (equipment == null)
-                    {
-                        ModelState.AddModelError("EquipmentId", "Selected equipment does not exist");
-                    }
-                    else
-                    {
-                        request.EquipmentId = EquipmentId.Value;
-                    }
-                }
-
-                // Update dates and cost
-                if (RentalStartDate.HasValue)
-                    request.RentalStartDate = RentalStartDate.Value;
-                    
-                if (RentalEndDate.HasValue)
-                    request.RentalEndDate = RentalEndDate.Value;
-                    
-                if (TotalCost.HasValue)
-                    request.TotalCost = TotalCost.Value;
-                    
-                // Update status if provided
+                // Update the existing rental request
+                existingRequest.Description = Description;
+                
+                // Only managers can change status
                 if (!string.IsNullOrEmpty(Status))
                 {
-                    string oldStatus = request.Status;
-                    request.Status = Status;
+                    existingRequest.Status = Status;
                     
-                    // If status changed to Approved, update equipment availability
-                    if (oldStatus != "Approved" && Status == "Approved")
+                    // If status is changed to approved, update equipment availability
+                    if (Status.ToLower() == "approved")
                     {
-                        var equipment = await _context.Equipment.FindAsync(request.EquipmentId);
+                        var equipment = await _context.Equipment.FindAsync(existingRequest.EquipmentId);
                         if (equipment != null)
                         {
                             equipment.AvailabilityStatus = "Reserved";
@@ -339,17 +331,16 @@ public class RentalRequestController : Controller
                         }
                     }
                 }
+                
+                // Save to database
+                _context.Update(existingRequest);
+                await _context.SaveChangesAsync();
+                
+                TempData["Success"] = "Rental request updated successfully!";
+                return RedirectToAction(nameof(Index));
             }
             
-            // Both customer and manager can update description
-            if (!string.IsNullOrEmpty(Description))
-                request.Description = Description;
-
-            // Save changes
-            _context.Update(request);
-            await _context.SaveChangesAsync();
-            
-            TempData["Success"] = "Rental request updated successfully.";
+            // This code should not be reached for customers as we handle their updates earlier
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
@@ -361,6 +352,7 @@ public class RentalRequestController : Controller
             return RedirectToAction(nameof(Edit), new { id = RentalRequestId });
         }
     }
+
     // GET: RentalRequest/Delete/5
     [Authorize]
     public async Task<IActionResult> Delete(int id)
@@ -440,6 +432,7 @@ public class RentalRequestController : Controller
         TempData["Success"] = "Rental request approved successfully.";
         return RedirectToAction(nameof(Index));
     }
+
 
     // GET: RentalRequest/Reject/5
     [Authorize(Roles = "Manager,Administrator,Admin")]

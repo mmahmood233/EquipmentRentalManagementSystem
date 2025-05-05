@@ -23,7 +23,10 @@ public class CategoryController : Controller
             categories = categories.Where(c => c.CategoryName.Contains(search));
         }
 
-        var categoryList = await categories.ToListAsync();
+        // Get categories with equipment included for counting
+        var categoryList = await categories.Include(c => c.Equipment).ToListAsync();
+
+        ViewBag.Search = search;
         return View(categoryList);
     }
 
@@ -81,6 +84,20 @@ public class CategoryController : Controller
             }
         }
         return View(category);
+    }
+
+    // VIEW EQUIPMENT BY CATEGORY
+    public async Task<IActionResult> ViewEquipment(int id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null) return NotFound();
+
+        var equipment = await _context.Equipment
+            .Where(e => e.CategoryId == id)
+            .ToListAsync();
+
+        ViewBag.Category = category;
+        return View(equipment);
     }
 
     // DELETE: only admins
