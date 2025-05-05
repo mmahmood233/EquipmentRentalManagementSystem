@@ -24,23 +24,7 @@
         </a>
     </div>
     
-    <!-- Debug information -->
-    <div class="alert alert-info mb-3">
-        <p><strong>Debug Info:</strong></p>
-        <p>IsCustomer: @isCustomer</p>
-        <p>IsManager: @isManager</p>
-        <p>UserId: @userId</p>
-        <p>User Roles: @string.Join(", ", user?.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value))</p>
-        <p>Total Rental Requests in Model: @Model.Count()</p>
-        <hr />
-        <p><strong>All Claims:</strong></p>
-        <ul>
-            @foreach (var claim in user?.Claims ?? new List<System.Security.Claims.Claim>())
-            {
-                <li>@claim.Type: @claim.Value</li>
-            }
-        </ul>
-    </div>
+
     
     <!-- Alerts for feedback messages -->
     @if (TempData["Success"] != null)
