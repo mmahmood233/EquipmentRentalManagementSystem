@@ -38,8 +38,8 @@
             label5 = new Label();
             label6 = new Label();
             cmbCategory = new ComboBox();
-            cmbAvailabilityStatus = new ComboBox();
-            cmbConditionStatus = new ComboBox();
+            cmbAvailability = new ComboBox();
+            cmbCondition = new ComboBox();
             btnSaveEquipment = new Button();
             btnCancelEdit = new Button();
             SuspendLayout();
@@ -84,21 +84,21 @@
             // 
             txtName.Location = new Point(224, 76);
             txtName.Name = "txtName";
-            txtName.Size = new Size(100, 23);
+            txtName.Size = new Size(121, 23);
             txtName.TabIndex = 4;
             // 
             // txtDescription
             // 
             txtDescription.Location = new Point(224, 118);
             txtDescription.Name = "txtDescription";
-            txtDescription.Size = new Size(100, 23);
+            txtDescription.Size = new Size(121, 23);
             txtDescription.TabIndex = 6;
             // 
             // txtRentalPrice
             // 
             txtRentalPrice.Location = new Point(224, 164);
             txtRentalPrice.Name = "txtRentalPrice";
-            txtRentalPrice.Size = new Size(100, 23);
+            txtRentalPrice.Size = new Size(121, 23);
             txtRentalPrice.TabIndex = 7;
             // 
             // label5
@@ -127,21 +127,21 @@
             cmbCategory.Size = new Size(121, 23);
             cmbCategory.TabIndex = 10;
             // 
-            // cmbAvailabilityStatus
+            // cmbAvailability
             // 
-            cmbAvailabilityStatus.FormattingEnabled = true;
-            cmbAvailabilityStatus.Location = new Point(224, 242);
-            cmbAvailabilityStatus.Name = "cmbAvailabilityStatus";
-            cmbAvailabilityStatus.Size = new Size(121, 23);
-            cmbAvailabilityStatus.TabIndex = 11;
+            cmbAvailability.FormattingEnabled = true;
+            cmbAvailability.Location = new Point(224, 242);
+            cmbAvailability.Name = "cmbAvailability";
+            cmbAvailability.Size = new Size(121, 23);
+            cmbAvailability.TabIndex = 11;
             // 
-            // cmbConditionStatus
+            // cmbCondition
             // 
-            cmbConditionStatus.FormattingEnabled = true;
-            cmbConditionStatus.Location = new Point(224, 289);
-            cmbConditionStatus.Name = "cmbConditionStatus";
-            cmbConditionStatus.Size = new Size(121, 23);
-            cmbConditionStatus.TabIndex = 12;
+            cmbCondition.FormattingEnabled = true;
+            cmbCondition.Location = new Point(224, 289);
+            cmbCondition.Name = "cmbCondition";
+            cmbCondition.Size = new Size(121, 23);
+            cmbCondition.TabIndex = 12;
             // 
             // btnSaveEquipment
             // 
@@ -151,6 +151,7 @@
             btnSaveEquipment.TabIndex = 13;
             btnSaveEquipment.Text = "Save";
             btnSaveEquipment.UseVisualStyleBackColor = true;
+            btnSaveEquipment.Click += btnSaveEquipment_Click;
             // 
             // btnCancelEdit
             // 
@@ -160,6 +161,7 @@
             btnCancelEdit.TabIndex = 14;
             btnCancelEdit.Text = "Cancel";
             btnCancelEdit.UseVisualStyleBackColor = true;
+            btnCancelEdit.Click += btnCancelEdit_Click;
             // 
             // EquipmentAddEditForm
             // 
@@ -168,8 +170,8 @@
             ClientSize = new Size(444, 450);
             Controls.Add(btnCancelEdit);
             Controls.Add(btnSaveEquipment);
-            Controls.Add(cmbConditionStatus);
-            Controls.Add(cmbAvailabilityStatus);
+            Controls.Add(cmbCondition);
+            Controls.Add(cmbAvailability);
             Controls.Add(cmbCategory);
             Controls.Add(label6);
             Controls.Add(label5);
@@ -182,6 +184,7 @@
             Controls.Add(label1);
             Name = "EquipmentAddEditForm";
             Text = "EquipmentEditForm";
+            Load += EquipmentAddEditForm_Load;
             ResumeLayout(false);
             PerformLayout();
         }
@@ -198,8 +201,8 @@
         private Label label5;
         private Label label6;
         private ComboBox cmbCategory;
-        private ComboBox cmbAvailabilityStatus;
-        private ComboBox cmbConditionStatus;
+        private ComboBox cmbAvailability;
+        private ComboBox cmbCondition;
         private Button btnSaveEquipment;
         private Button btnCancelEdit;
     }

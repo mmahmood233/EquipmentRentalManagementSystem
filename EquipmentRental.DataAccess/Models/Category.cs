@@ -26,3 +26,4 @@ namespace EquipmentRental.DataAccess.Models
         public virtual ICollection<Equipment> Equipment { get; set; }
     }
 }
+
