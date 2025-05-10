@@ -88,6 +88,7 @@
             btnDeleteEquipment.TabIndex = 4;
             btnDeleteEquipment.Text = "Delete";
             btnDeleteEquipment.UseVisualStyleBackColor = false;
+            btnDeleteEquipment.Click += btnDeleteEquipment_Click;
             // 
             // btnRefreshEquipment
             // 

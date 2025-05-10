@@ -145,5 +145,42 @@ namespace EquipmentRental.Forms
                 }
             }
         }
+
+        private void btnDeleteEquipment_Click(object sender, EventArgs e)
+        {
+            if (dgvEquipment.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Please select a row to delete.");
+                return;
+            }
+
+            // Get selected EquipmentId
+            int selectedId = Convert.ToInt32(dgvEquipment.SelectedRows[0].Cells["EquipmentId"].Value);
+
+            var equipment = context.Equipment.FirstOrDefault(e => e.EquipmentId == selectedId);
+
+            if (equipment == null)
+            {
+                MessageBox.Show("Equipment not found.");
+                return;
+            }
+
+            // Confirm deletion
+            DialogResult result = MessageBox.Show(
+                $"Are you sure you want to delete '{equipment.Name}'?",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+
+            if (result == DialogResult.Yes)
+            {
+                context.Equipment.Remove(equipment);
+                context.SaveChanges();
+                MessageBox.Show("Equipment deleted successfully.");
+
+                LoadEquipmentData(); // Refresh the DataGridView
+            }
+        }
     }
 }
