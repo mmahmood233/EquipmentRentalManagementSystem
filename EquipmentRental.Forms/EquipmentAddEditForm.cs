@@ -152,3 +152,4 @@ namespace EquipmentRental.Forms
         }
     }
 }
+

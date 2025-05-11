@@ -34,6 +34,32 @@ namespace EquipmentRental.Forms
             LoadRentalStats();
             LoadOverdueRentals();
             LoadFinancialSummary();
+            LoadRecentReturns();
+
+        }
+
+        private void LoadRecentReturns()
+        {
+            var recentReturns = context.ReturnRecords
+                .Include(r => r.RentalTransaction)
+                    .ThenInclude(rt => rt.Equipment)
+                .Include(r => r.RentalTransaction)
+                    .ThenInclude(rt => rt.Customer)
+                .OrderByDescending(r => r.ActualReturnDate)
+                .Take(5)
+                .Select(r => new
+                {
+                    r.ReturnRecordId,
+                    Equipment = r.RentalTransaction.Equipment.Name,
+                    Customer = r.RentalTransaction.Customer.FullName,
+                    r.ActualReturnDate,
+                    r.ReturnCondition,
+                    r.LateReturnFee,
+                    r.AdditionalCharges
+                })
+                .ToList();
+
+            dgvRecentReturns.DataSource = recentReturns;
         }
 
         private void LoadEquipmentSummary()
