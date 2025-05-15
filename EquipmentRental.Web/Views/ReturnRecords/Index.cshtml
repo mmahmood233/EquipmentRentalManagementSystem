@@ -1,0 +1,65 @@
+﻿@model IEnumerable<EquipmentRental.DataAccess.Models.ReturnRecord>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.ActualReturnDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ReturnCondition)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LateReturnFee)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AdditionalCharges)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Notes)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.RentalTransaction)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.ActualReturnDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnCondition)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LateReturnFee)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.AdditionalCharges)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Notes)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.RentalTransaction.PaymentStatus)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.ReturnRecordId">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.ReturnRecordId">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.ReturnRecordId">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

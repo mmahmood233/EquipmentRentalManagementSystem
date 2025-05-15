@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EquipmentRental.DataAccess.Models;
-
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 namespace EquipmentRental.Web.Controllers
 {
+    [Authorize(Roles = "Customer,Manager,Administrator")]
     public class RentalTransactionsController : Controller
-    {
+    { 
         private readonly EquipmentRentalDbContext _context;
 
         public RentalTransactionsController(EquipmentRentalDbContext context)
@@ -20,10 +22,28 @@ namespace EquipmentRental.Web.Controllers
 
         // GET: RentalTransactions
         public async Task<IActionResult> Index()
-        {
-            var equipmentRentalDbContext = _context.RentalTransactions.Include(r => r.Customer).Include(r => r.Equipment).Include(r => r.RentalRequest);
-            return View(await equipmentRentalDbContext.ToListAsync());
-        }
+{
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            if (string.IsNullOrEmpty(userEmail)) return Unauthorized();
+
+    var user = await _context.Users.Include(u => u.Role)
+                                   .FirstOrDefaultAsync(u => u.Email == userEmail);
+    if (user == null) return Unauthorized();
+
+    IQueryable<RentalTransaction> query = _context.RentalTransactions
+        .Include(r => r.Customer)
+        .Include(r => r.Equipment)
+        .Include(r => r.RentalRequest);
+
+    // Only show their own if customer
+    if (user.Role.RoleName == "Customer")
+    {
+        query = query.Where(r => r.Customer.Email == userEmail);
+    }
+
+    return View(await query.ToListAsync());
+}
+
 
         // GET: RentalTransactions/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -47,7 +67,9 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions/Create
+        [Authorize(Roles = "Manager,Administrator")]
         public IActionResult Create()
+
         {
             ViewData["CustomerId"] = new SelectList(_context.Users, "UserId", "Email");
             ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "AvailabilityStatus");
@@ -58,6 +80,7 @@ namespace EquipmentRental.Web.Controllers
         // POST: RentalTransactions/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("RentalTransactionId,RentalRequestId,EquipmentId,CustomerId,RentalStartDate,RentalEndDate,RentalPeriod,RentalFee,Deposit,PaymentStatus,CreatedAt")] RentalTransaction rentalTransaction)
@@ -75,6 +98,7 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions/Edit/5
+        [Authorize(Roles = "Manager,Administrator")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null || _context.RentalTransactions == null)
@@ -96,6 +120,7 @@ namespace EquipmentRental.Web.Controllers
         // POST: RentalTransactions/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("RentalTransactionId,RentalRequestId,EquipmentId,CustomerId,RentalStartDate,RentalEndDate,RentalPeriod,RentalFee,Deposit,PaymentStatus,CreatedAt")] RentalTransaction rentalTransaction)
@@ -132,6 +157,7 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions/Delete/5
+        [Authorize(Roles = "Manager,Administrator")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null || _context.RentalTransactions == null)
@@ -153,6 +179,7 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // POST: RentalTransactions/Delete/5
+        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
