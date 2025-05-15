@@ -6,12 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EquipmentRental.DataAccess.Models;
-using Microsoft.AspNetCore.Authorization;
+
 namespace EquipmentRental.Web.Controllers
 {
-    
     public class RentalTransactionsController : Controller
-
     {
         private readonly EquipmentRentalDbContext _context;
 
@@ -23,25 +21,9 @@ namespace EquipmentRental.Web.Controllers
         // GET: RentalTransactions
         public async Task<IActionResult> Index()
         {
-            var userEmail = User.Identity.Name;
-            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == userEmail);
-
-            if (user == null)
-                return Unauthorized();
-
-            IQueryable<RentalTransaction> query = _context.RentalTransactions
-                .Include(r => r.Customer)
-                .Include(r => r.Equipment)
-                .Include(r => r.RentalRequest);
-
-            if (user.RoleId == 3) // 3 = Customer
-            {
-                query = query.Where(r => r.Customer.Email == userEmail);
-            }
-
-            return View(await query.ToListAsync());
+            var equipmentRentalDbContext = _context.RentalTransactions.Include(r => r.Customer).Include(r => r.Equipment).Include(r => r.RentalRequest);
+            return View(await equipmentRentalDbContext.ToListAsync());
         }
-
 
         // GET: RentalTransactions/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -65,7 +47,6 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions/Create
-    
         public IActionResult Create()
         {
             ViewData["CustomerId"] = new SelectList(_context.Users, "UserId", "Email");
@@ -92,7 +73,6 @@ namespace EquipmentRental.Web.Controllers
             ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Status", rentalTransaction.RentalRequestId);
             return View(rentalTransaction);
         }
-       
 
         // GET: RentalTransactions/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -150,7 +130,6 @@ namespace EquipmentRental.Web.Controllers
             ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Status", rentalTransaction.RentalRequestId);
             return View(rentalTransaction);
         }
-      
 
         // GET: RentalTransactions/Delete/5
         public async Task<IActionResult> Delete(int? id)
