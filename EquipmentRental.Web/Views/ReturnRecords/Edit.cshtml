@@ -1,0 +1,59 @@
+﻿@model EquipmentRental.DataAccess.Models.ReturnRecord
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>ReturnRecord</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ReturnRecordId" />
+            <div class="form-group">
+                <label asp-for="RentalTransactionId" class="control-label"></label>
+                <select asp-for="RentalTransactionId" class="form-control" asp-items="ViewBag.RentalTransactionId"></select>
+                <span asp-validation-for="RentalTransactionId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ActualReturnDate" class="control-label"></label>
+                <input asp-for="ActualReturnDate" class="form-control" />
+                <span asp-validation-for="ActualReturnDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReturnCondition" class="control-label"></label>
+                <input asp-for="ReturnCondition" class="form-control" />
+                <span asp-validation-for="ReturnCondition" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LateReturnFee" class="control-label"></label>
+                <input asp-for="LateReturnFee" class="form-control" />
+                <span asp-validation-for="LateReturnFee" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AdditionalCharges" class="control-label"></label>
+                <input asp-for="AdditionalCharges" class="form-control" />
+                <span asp-validation-for="AdditionalCharges" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Notes" class="control-label"></label>
+                <input asp-for="Notes" class="form-control" />
+                <span asp-validation-for="Notes" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
