@@ -1,78 +1,158 @@
-﻿@model EquipmentRental.DataAccess.Models.RentalTransaction
+@model EquipmentRental.DataAccess.Models.RentalTransaction
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Rental Transaction Details";
+    var canManageFiles = ViewBag.CanManageFiles as bool? ?? false;
+    var isManager = ViewBag.IsManager as bool? ?? false;
 }
 
-<h1>Details</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Transaction #@Model.RentalTransactionId Details</h2>
+        <div>
+            @if (isManager)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.RentalTransactionId" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-pencil"></i> Edit Transaction
+                </a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
 
-<div>
-    <h4>RentalTransaction</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalStartDate)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalStartDate)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalEndDate)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalEndDate)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalPeriod)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalPeriod)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalFee)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalFee)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Deposit)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Deposit)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.PaymentStatus)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.PaymentStatus)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CreatedAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CreatedAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Customer)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Customer.Email)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Equipment)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Equipment.AvailabilityStatus)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalRequest)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalRequest.Status)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.RentalTransactionId">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Transaction Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Equipment Details</h6>
+                            <p><strong>Equipment:</strong> @Model.Equipment.Name</p>
+                            <p><strong>Category:</strong> @Model.Equipment.Category?.CategoryName</p>
+                            <p><strong>Condition:</strong> @Model.Equipment.ConditionStatus</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Customer Information</h6>
+                            <p><strong>Name:</strong> @Model.Customer.FullName</p>
+                            <p><strong>Email:</strong> @Model.Customer.Email</p>
+                            <p><strong>User ID:</strong> @Model.Customer.UserId</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Rental Details</h6>
+                            <p><strong>Start Date:</strong> @Model.RentalStartDate.ToShortDateString()</p>
+                            <p><strong>End Date:</strong> @Model.RentalEndDate.ToShortDateString()</p>
+                            <p><strong>Rental Period:</strong> @Model.RentalPeriod days</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Financial Details</h6>
+                            <p><strong>Rental Fee:</strong> $@Model.RentalFee.ToString("F2")</p>
+                            <p><strong>Deposit:</strong> $@Model.Deposit.ToString("F2")</p>
+                            <p>
+                                <strong>Payment Status:</strong>
+                                <span class="badge @(Model.PaymentStatus == "Paid" ? "bg-success" : "bg-warning")">@Model.PaymentStatus</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted">Additional Information</h6>
+                            <p><strong>Created:</strong> @Model.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
+                            <p><strong>Original Request:</strong> #@Model.RentalRequestId (@Model.RentalRequest.Status)</p>
+                            <p><strong>Request Description:</strong> @Model.RentalRequest.Description</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Documents</h5>
+                    <div>
+                        <a href="@Url.Action("Index", "Documents", new { transactionId = ViewBag.TransactionId ?? Model.RentalTransactionId })" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-folder"></i> View All
+                        </a>
+                        @if (canManageFiles)
+                        {
+                            <a href="@Url.Action("Upload", "Documents", new { transactionId = ViewBag.TransactionId ?? Model.RentalTransactionId })" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="bi bi-cloud-upload"></i> Upload
+                            </a>
+                        }
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model.Documents == null || !Model.Documents.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> No documents have been uploaded for this transaction yet.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var doc in Model.Documents.Take(5))
+                            {
+                                <a href="@Url.Action("Download", "Documents", new { id = doc.DocumentId })" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-file-earmark"></i> @doc.FileName
+                                        <small class="d-block text-muted">@doc.UploadedAt.ToString("MMM dd, yyyy")</small>
+                                    </div>
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            }
+                        </div>
+                        @if (Model.Documents.Count > 5)
+                        {
+                            <div class="mt-2 text-center">
+                                <a href="@Url.Action("Index", "Documents", new { transactionId = Model.RentalTransactionId })" class="btn btn-sm btn-link">
+                                    View all @Model.Documents.Count documents
+                                </a>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        @if (isManager)
+                        {
+                            @if (Model.PaymentStatus != "Paid")
+                            {
+                                <a href="@Url.Action("MarkAsPaid", "RentalTransactions", new { id = Model.RentalTransactionId })" class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Mark as Paid
+                                </a>
+                            }
+                            <a href="@Url.Action("PrintReceipt", "RentalTransactions", new { id = Model.RentalTransactionId })" class="btn btn-outline-primary">
+                                <i class="bi bi-printer"></i> Print Receipt
+                            </a>
+                        }
+                        <a href="@Url.Action("Details", "RentalRequest", new { id = Model.RentalRequestId })" class="btn btn-outline-secondary">
+                            <i class="bi bi-file-text"></i> View Original Request
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Upload Document";
+    var transaction = ViewBag.Transaction as EquipmentRental.DataAccess.Models.RentalTransaction;
+    var transactionId = ViewBag.TransactionId ?? (transaction?.RentalTransactionId);
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@ViewData["Title"] for Transaction #@transactionId</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transaction Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    @if (transaction != null)
+                    {
+                        <p><strong>Equipment:</strong> @transaction.Equipment?.Name</p>
+                        <p><strong>Customer:</strong> @transaction.Customer?.FullName</p>
+                        <p><strong>Rental Period:</strong> @transaction.RentalStartDate.ToShortDateString() to @transaction.RentalEndDate.ToShortDateString()</p>
+                    }
+                    else
+                    {
+                        <p>Transaction details not available</p>
+                    }
+                </div>
+                <div class="col-md-6">
+                    @if (transaction != null)
+                    {
+                        <p><strong>Rental Fee:</strong> $@transaction.RentalFee.ToString("F2")</p>
+                        <p><strong>Deposit:</strong> $@transaction.Deposit.ToString("F2")</p>
+                        <p><strong>Payment Status:</strong> <span class="badge @(transaction.PaymentStatus == "Paid" ? "bg-success" : "bg-warning")">@transaction.PaymentStatus</span></p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Upload New Document</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" asp-action="Upload" asp-route-transactionId="@transactionId">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Select File</label>
+                    <input type="file" class="form-control" id="file" name="file" required>
+                    <div class="form-text">Supported file types: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</div>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-cloud-upload"></i> Upload Document
+                    </button>
+                    <a href="@Url.Action("Index", "Documents", new { transactionId = transactionId })" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
