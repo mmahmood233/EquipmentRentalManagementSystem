@@ -358,7 +358,6 @@ namespace EquipmentRental.Web.Controllers
 
         // GET: ReturnRecords/Edit/5
         [Authorize(Roles = "Manager,Administrator")]
-
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null || _context.ReturnRecords == null)
@@ -366,51 +365,83 @@ namespace EquipmentRental.Web.Controllers
                 return NotFound();
             }
 
-            var returnRecord = await _context.ReturnRecords.FindAsync(id);
+            var returnRecord = await _context.ReturnRecords
+                .Include(r => r.RentalTransaction)
+                .ThenInclude(t => t.Equipment)
+                .Include(r => r.RentalTransaction.Customer)
+                .FirstOrDefaultAsync(r => r.ReturnRecordId == id);
+                
             if (returnRecord == null)
             {
                 return NotFound();
             }
-            ViewData["RentalTransactionId"] = new SelectList(_context.RentalTransactions, "RentalTransactionId", "PaymentStatus", returnRecord.RentalTransactionId);
+            
+            // Get the transaction details for the sidebar
+            ViewBag.Transaction = returnRecord.RentalTransaction;
+            
+            // Create a list with just this transaction for the dropdown
+            var transaction = returnRecord.RentalTransaction;
+            var items = new List<SelectListItem>
+            {
+                new SelectListItem
+                {
+                    Value = transaction.RentalTransactionId.ToString(),
+                    Text = $"#{transaction.RentalTransactionId} - {transaction.Equipment?.Name} - {transaction.Customer?.FullName} - {transaction.RentalStartDate.ToShortDateString()} to {transaction.RentalEndDate.ToShortDateString()}",
+                    Selected = true
+                }
+            };
+            
+            ViewBag.Transactions = items;
+            
             return View(returnRecord);
         }
 
         // POST: ReturnRecords/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [Authorize(Roles = "Manager,Administrator")]
-
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ReturnRecordId,RentalTransactionId,ActualReturnDate,ReturnCondition,LateReturnFee,AdditionalCharges,Notes")] ReturnRecord returnRecord)
+        public async Task<IActionResult> Edit(int id, int RentalTransactionId, DateTime ActualReturnDate, 
+            string ReturnCondition, decimal LateReturnFee, decimal AdditionalCharges, string Notes)
         {
-            if (id != returnRecord.ReturnRecordId)
+            // Log all parameters for debugging
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - ReturnRecordId: {id}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - RentalTransactionId: {RentalTransactionId}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - ActualReturnDate: {ActualReturnDate}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - ReturnCondition: {ReturnCondition}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - LateReturnFee: {LateReturnFee}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - AdditionalCharges: {AdditionalCharges}");
+            System.Diagnostics.Debug.WriteLine($"Edit form submission - Notes: {Notes}");
+            
+            try
             {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
+                // Find the existing record
+                var returnRecord = await _context.ReturnRecords.FindAsync(id);
+                if (returnRecord == null)
                 {
-                    _context.Update(returnRecord);
-                    await _context.SaveChangesAsync();
+                    return NotFound();
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ReturnRecordExists(returnRecord.ReturnRecordId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                
+                // Update the record properties
+                returnRecord.RentalTransactionId = RentalTransactionId;
+                returnRecord.ActualReturnDate = ActualReturnDate;
+                returnRecord.ReturnCondition = ReturnCondition;
+                returnRecord.LateReturnFee = LateReturnFee;
+                returnRecord.AdditionalCharges = AdditionalCharges;
+                returnRecord.Notes = Notes;
+                
+                // Update the record in the database
+                _context.Update(returnRecord);
+                await _context.SaveChangesAsync();
+                
+                TempData["Success"] = "Return record updated successfully!";
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["RentalTransactionId"] = new SelectList(_context.RentalTransactions, "RentalTransactionId", "PaymentStatus", returnRecord.RentalTransactionId);
-            return View(returnRecord);
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating return record: {ex.Message}");
+                TempData["Error"] = $"Error updating return record: {ex.Message}";
+                return RedirectToAction(nameof(Edit), new { id });
+            }
         }
 
         // GET: ReturnRecords/Delete/5
