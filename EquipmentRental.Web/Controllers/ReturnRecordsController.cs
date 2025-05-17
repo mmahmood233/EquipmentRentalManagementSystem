@@ -257,15 +257,7 @@ namespace EquipmentRental.Web.Controllers
                 
                 // Save changes to database
                 await _context.SaveChangesAsync();
-                // Send notification to the customer
-                if (transaction != null)
-                {
-                    await _notificationService.CreateNotification(
-                        transaction.CustomerId,
-                        $"Your return for {transaction.Equipment?.Name ?? "equipment"} has been processed. Thank you!",
-                        "Return Completed"
-                    );
-                }
+             
                 // Send notification to the customer
                 if (transaction != null)
                 {
