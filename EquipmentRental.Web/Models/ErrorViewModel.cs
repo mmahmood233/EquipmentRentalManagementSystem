@@ -1,4 +1,4 @@
-﻿namespace EquipmentRental.Web.Models
+namespace AdvancedProgrammingASPProject.Models
 {
     public class ErrorViewModel
     {

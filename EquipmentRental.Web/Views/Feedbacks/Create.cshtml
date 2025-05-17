@@ -1,46 +1,59 @@
-﻿@model EquipmentRental.DataAccess.Models.Feedback
+﻿@model ProjectDBClassLibrary.Model.FeedBack
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Give Feedback";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Create</h1>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Feedback for <span class="fw-bold">@ViewBag.EquipmentName</span></h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateFeedback" method="post">
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                        <input type="hidden" asp-for="EquipmentId" value="@ViewBag.EquipmentId" />
 
-<h4>Feedback</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="EquipmentId" class="control-label"></label>
-                <select asp-for="EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
+                       <!-- Inside your form -->
+<div class="mb-3">
+    <label class="form-label">User</label>
+    <input type="text" class="form-control" value="@ViewBag.UserName" readonly />
+    <input type="hidden" asp-for="UserId" value="@ViewBag.UserId" />
+</div>
+
+
+                        <div class="mb-3">
+                            <label asp-for="Rating" class="form-label">Rating</label>
+                            <input asp-for="Rating" type="number" min="1" max="5" class="form-control" placeholder="1 to 5" />
+                            <span asp-validation-for="Rating" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Comment" class="form-label">Your Comment</label>
+                            <textarea asp-for="Comment" class="form-control" rows="4" placeholder="Write your feedback..."></textarea>
+                            <span asp-validation-for="Comment" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-send"></i> Submit Feedback
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class ="form-control" asp-items="ViewBag.UserId"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="CommentText" class="control-label"></label>
-                <input asp-for="CommentText" class="form-control" />
-                <span asp-validation-for="CommentText" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Rating" class="control-label"></label>
-                <input asp-for="Rating" class="form-control" />
-                <span asp-validation-for="Rating" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }
