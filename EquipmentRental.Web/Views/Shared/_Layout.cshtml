@@ -38,6 +38,9 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Category" asp-action="Index"><i class="bi bi-tags me-1"></i> Categories</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Feedbacks" asp-action="Equipment"><i class="bi bi-star-half me-1"></i> Equipment Feedback</a>
+                            </li>
                             
                             @* Show based on role *@
                             @if (HttpContextAccessor.HttpContext.User.IsInRole("Administrator"))
@@ -78,6 +81,9 @@
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link" asp-controller="RentalRequest" asp-action="Create"><i class="bi bi-plus-circle me-1"></i> New Rental Request</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Feedbacks" asp-action="MyFeedback"><i class="bi bi-star me-1"></i> My Feedback</a>
                                 </li>
                             }
                         }

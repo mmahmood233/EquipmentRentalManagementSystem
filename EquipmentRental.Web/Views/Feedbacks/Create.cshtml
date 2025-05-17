@@ -1,46 +1,154 @@
-﻿@model EquipmentRental.DataAccess.Models.Feedback
+@model EquipmentRental.DataAccess.Models.Feedback
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Add Feedback";
+    var equipment = ViewBag.Equipment as EquipmentRental.DataAccess.Models.Equipment;
 }
 
-<h1>Create</h1>
-
-<h4>Feedback</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="EquipmentId" class="control-label"></label>
-                <select asp-for="EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class ="form-control" asp-items="ViewBag.UserId"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="CommentText" class="control-label"></label>
-                <input asp-for="CommentText" class="form-control" />
-                <span asp-validation-for="CommentText" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Rating" class="control-label"></label>
-                <input asp-for="Rating" class="form-control" />
-                <span asp-validation-for="Rating" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
-        </form>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@ViewData["Title"] for @equipment.Name</h2>
+        <a asp-action="Index" asp-route-equipmentId="@equipment.EquipmentId" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Feedback
+        </a>
     </div>
-</div>
-
-<div>
-    <a asp-action="Index">Back to List</a>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Your Feedback</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="equipmentId" value="@Model.EquipmentId" />
+                        
+                        @if (TempData["Error"] != null)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @TempData["Error"]
+                            </div>
+                        }
+                        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Rating</label>
+                            <div class="d-flex">
+                                <div class="btn-group" role="group" aria-label="Rating">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <input type="radio" class="btn-check" name="rating" id="rating@(i)" value="@i" @(Model.Rating.HasValue && Model.Rating.Value == i ? "checked" : "") autocomplete="off">
+                                        <label class="btn btn-outline-warning" for="rating@(i)">
+                                            @i <i class="bi bi-star-fill"></i>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                            <div class="form-text">How would you rate this equipment?</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="CommentText" class="form-label">Your Comments</label>
+                            <textarea name="commentText" id="CommentText" class="form-control" rows="5" placeholder="Share your experience with this equipment...">@Model.CommentText</textarea>
+                            <div class="form-text">Please provide details about your experience with this equipment.</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Submit Feedback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Equipment Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <img src="/images/equipment-placeholder.png" alt="@equipment.Name" class="img-fluid rounded" style="max-height: 150px;" onerror="this.src='/images/placeholder.png';" />
+                    </div>
+                    
+                    <h5 class="card-title">@equipment.Name</h5>
+                    <p class="card-text">@equipment.Description</p>
+                    
+                    <hr />
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>Category:</strong><br />@equipment.Category?.CategoryName</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>Condition:</strong><br />@equipment.ConditionStatus</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <p><strong>Price:</strong><br />$@equipment.RentalPrice.ToString("F2")/day</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>Status:</strong><br /><span class="badge @(equipment.AvailabilityStatus == "Available" ? "bg-success" : "bg-warning")">@equipment.AvailabilityStatus</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        // Initialize the star rating system
+        document.addEventListener('DOMContentLoaded', function() {
+            // Highlight stars on hover for better UX
+            const ratingLabels = document.querySelectorAll('[for^="rating"]');
+            ratingLabels.forEach(label => {
+                label.addEventListener('mouseenter', function() {
+                    const rating = parseInt(this.getAttribute('for').replace('rating', ''));
+                    highlightStars(rating);
+                });
+                
+                label.addEventListener('mouseleave', function() {
+                    resetStars();
+                });
+            });
+            
+            function highlightStars(rating) {
+                ratingLabels.forEach(label => {
+                    const labelRating = parseInt(label.getAttribute('for').replace('rating', ''));
+                    if (labelRating <= rating) {
+                        label.classList.add('btn-warning');
+                        label.classList.remove('btn-outline-warning');
+                    } else {
+                        label.classList.add('btn-outline-warning');
+                        label.classList.remove('btn-warning');
+                    }
+                });
+            }
+            
+            function resetStars() {
+                // Reset to the selected rating
+                const selectedRating = document.querySelector('input[name="rating"]:checked');
+                if (selectedRating) {
+                    highlightStars(parseInt(selectedRating.value));
+                } else {
+                    ratingLabels.forEach(label => {
+                        label.classList.add('btn-outline-warning');
+                        label.classList.remove('btn-warning');
+                    });
+                }
+            }
+            
+            // Initialize with any pre-selected rating
+            resetStars();
+        });
+    </script>
 }

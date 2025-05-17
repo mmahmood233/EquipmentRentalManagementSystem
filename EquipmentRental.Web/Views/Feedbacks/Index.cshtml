@@ -1,65 +1,157 @@
-﻿@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
+@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Equipment Feedback";
+    var equipment = ViewBag.Equipment as EquipmentRental.DataAccess.Models.Equipment;
+    var canAddFeedback = ViewBag.CanAddFeedback as bool? ?? false;
+    var isAdminOrManager = ViewBag.IsAdminOrManager as bool? ?? false;
 }
 
-<h1>Index</h1>
-
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.CommentText)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Rating)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsVisible)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.CommentText)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rating)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.IsVisible)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Equipment.AvailabilityStatus)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Email)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.FeedbackId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.FeedbackId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.FeedbackId">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        @if (equipment != null)
+        {
+            <h2>Feedback for @equipment.Name</h2>
+        }
+        else
+        {
+            <h2>All Equipment Feedback</h2>
+        }
+        
+        <div>
+            @if (equipment != null && canAddFeedback)
+            {
+                <a asp-action="Create" asp-route-equipmentId="@equipment.EquipmentId" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Feedback
+                </a>
+            }
+            <a asp-action="Equipment" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-grid"></i> Browse Equipment
+            </a>
+        </div>
+    </div>
+    
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (equipment != null)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Equipment Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> @equipment.Name</p>
+                        <p><strong>Category:</strong> @equipment.Category?.CategoryName</p>
+                        <p><strong>Condition:</strong> @equipment.ConditionStatus</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Rental Price:</strong> $@equipment.RentalPrice.ToString("F2")/day</p>
+                        <p><strong>Status:</strong> <span class="badge @(equipment.AvailabilityStatus == "Available" ? "bg-success" : "bg-warning")">@equipment.AvailabilityStatus</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No feedback available for this equipment yet.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var item in Model)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 @(!(item.IsVisible.HasValue && item.IsVisible.Value) ? "border-danger" : "")">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                @if (item.Rating.HasValue)
+                                {
+                                    <div class="mb-1">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            if (i <= item.Rating.Value)
+                                            {
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-star text-muted"></i>
+                                            }
+                                        }
+                                    </div>
+                                }
+                                <h6 class="mb-0">@item.User.FullName</h6>
+                            </div>
+                            <small class="text-muted">@item.CreatedAt.ToString("MMM dd, yyyy")</small>
+                        </div>
+                        <div class="card-body">
+                            @if (!(item.IsVisible.HasValue && item.IsVisible.Value))
+                            {
+                                <div class="alert alert-danger mb-3">
+                                    <i class="bi bi-eye-slash"></i> This feedback is currently hidden from public view.
+                                </div>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(item.CommentText))
+                            {
+                                <p class="card-text">@item.CommentText</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted"><em>No comment provided</em></p>
+                            }
+                            
+                            @if (equipment == null)
+                            {
+                                <p class="card-text mt-3">
+                                    <strong>Equipment:</strong> 
+                                    <a asp-action="Index" asp-route-equipmentId="@item.EquipmentId">@item.Equipment.Name</a>
+                                </p>
+                            }
+                        </div>
+                        
+                        @if (isAdminOrManager)
+                        {
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <form id="toggle-form-@item.FeedbackId" asp-action="ToggleVisibility" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.FeedbackId" />
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    </form>
+                                    <a href="#" onclick="document.getElementById('toggle-form-@item.FeedbackId').submit(); return false;" class="btn btn-sm @((item.IsVisible.HasValue && item.IsVisible.Value) ? "btn-outline-danger" : "btn-outline-success")">
+                                        <i class="bi @((item.IsVisible.HasValue && item.IsVisible.Value) ? "bi-eye-slash" : "bi-eye")"></i> @((item.IsVisible.HasValue && item.IsVisible.Value) ? "Hide" : "Show")
+                                    </a>
+                                    
+                                    <a asp-action="Delete" asp-route-id="@item.FeedbackId" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

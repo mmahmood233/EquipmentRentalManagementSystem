@@ -1,0 +1,95 @@
+@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
+
+@{
+    ViewData["Title"] = "My Feedback";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@ViewData["Title"]</h2>
+        <div>
+            <a asp-action="Equipment" class="btn btn-outline-secondary">
+                <i class="bi bi-grid"></i> Browse Equipment
+            </a>
+        </div>
+    </div>
+    
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> You haven't provided any feedback yet.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var item in Model)
+            {
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 @(!(item.IsVisible.HasValue && item.IsVisible.Value) ? "border-danger" : "")">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">@item.Equipment.Name</h5>
+                                @if (item.Rating.HasValue)
+                                {
+                                    <div class="mt-1">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            if (i <= item.Rating.Value)
+                                            {
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-star text-muted"></i>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <small class="text-muted">@item.CreatedAt.ToString("MMM dd, yyyy")</small>
+                        </div>
+                        <div class="card-body">
+                            @if (!(item.IsVisible.HasValue && item.IsVisible.Value))
+                            {
+                                <div class="alert alert-danger mb-3">
+                                    <i class="bi bi-eye-slash"></i> This feedback is currently hidden from public view by an administrator.
+                                </div>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(item.CommentText))
+                            {
+                                <p class="card-text">@item.CommentText</p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted"><em>No comment provided</em></p>
+                            }
+                        </div>
+                        <div class="card-footer bg-light">
+                            <a asp-action="Index" asp-route-equipmentId="@item.EquipmentId" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-chat-square-text"></i> View All Feedback for This Equipment
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
