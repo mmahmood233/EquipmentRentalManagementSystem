@@ -1,59 +1,64 @@
 ﻿@model EquipmentRental.DataAccess.Models.Feedback
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Feedback Visibility";
 }
 
-<h1>Edit</h1>
+<h2>Edit Feedback Visibility</h2>
 
-<h4>Feedback</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="card mt-3 mb-3">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Equipment</dt>
+            <dd class="col-sm-9">@Model.Equipment?.Name</dd>
+
+            <dt class="col-sm-3">User</dt>
+            <dd class="col-sm-9">@Model.User?.FullName</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@Model.CreatedAt.ToString("g")</dd>
+
+            <dt class="col-sm-3">Rating</dt>
+            <dd class="col-sm-9">
+                @for (var i = 1; i <= 5; i++)
+                {
+                    if (i <= Model.Rating)
+                    {
+                        <span style="color: gold;">&#9733;</span>
+                    }
+                    else
+                    {
+                        <span style="color: #ddd;">&#9733;</span>
+                    }
+                }
+                <span class="sr-only">(@Model.Rating)</span>
+            </dd>
+
+            <dt class="col-sm-3">Comment</dt>
+            <dd class="col-sm-9">@Model.CommentText</dd>
+        </dl>
+
+        <form asp-action="Edit" method="post">
+            @* Hidden fields *@
             <input type="hidden" asp-for="FeedbackId" />
-            <div class="form-group">
-                <label asp-for="EquipmentId" class="control-label"></label>
-                <select asp-for="EquipmentId" class="form-control" asp-items="ViewBag.EquipmentId"></select>
-                <span asp-validation-for="EquipmentId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class="form-control" asp-items="ViewBag.UserId"></select>
-                <span asp-validation-for="UserId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="CommentText" class="control-label"></label>
-                <input asp-for="CommentText" class="form-control" />
-                <span asp-validation-for="CommentText" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Rating" class="control-label"></label>
-                <input asp-for="Rating" class="form-control" />
-                <span asp-validation-for="Rating" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="CreatedAt" class="control-label"></label>
-                <input asp-for="CreatedAt" class="form-control" />
-                <span asp-validation-for="CreatedAt" class="text-danger"></span>
-            </div>
-            <div class="form-check mb-3">
-                <input asp-for="IsVisible" class="form-check-input" type="checkbox" />
-                <label asp-for="IsVisible" class="form-check-label">Visible to Customers</label>
-            </div>
+            <input type="hidden" asp-for="EquipmentId" />
+            <input type="hidden" asp-for="UserId" />
+            <input type="hidden" asp-for="CommentText" />
+            <input type="hidden" asp-for="Rating" />
+            <input type="hidden" asp-for="CreatedAt" />
 
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
+            <div class="form-group form-check mb-3">
+                <input type="checkbox" asp-for="IsVisible" class="form-check-input" />
+                <label asp-for="IsVisible" class="form-check-label">Visible to Users</label>
             </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a asp-action="Index" class="btn btn-secondary">Back</a>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

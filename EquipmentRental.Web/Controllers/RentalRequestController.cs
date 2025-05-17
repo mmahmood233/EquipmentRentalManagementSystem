@@ -9,10 +9,12 @@ using System.Diagnostics;
 public class RentalRequestController : Controller
 {
     private readonly EquipmentRentalDbContext _context;
+    private readonly NotificationService _notificationService;
 
-    public RentalRequestController(EquipmentRentalDbContext context)
+    public RentalRequestController(EquipmentRentalDbContext context, NotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     // GET: /RentalRequest/Details/5
@@ -459,6 +461,12 @@ public class RentalRequestController : Controller
             _context.Update(equipment);
             await _context.SaveChangesAsync();
         }
+        // Send notification to the customer
+        await _notificationService.CreateNotification(
+            request.CustomerId,
+            $"Your rental request for {request.Equipment?.Name ?? "equipment"} has been approved!",
+            "Rental Approved"
+        );
 
         TempData["Success"] = "Rental request approved successfully.";
         return RedirectToAction(nameof(Index));
@@ -484,6 +492,13 @@ public class RentalRequestController : Controller
         request.Status = "Rejected";
         _context.Update(request);
         await _context.SaveChangesAsync();
+        var equipment = await _context.Equipment.FindAsync(request.EquipmentId);
+        string equipmentName = equipment?.Name ?? "equipment";
+        await _notificationService.CreateNotification(
+            request.CustomerId,
+            $"Your rental request for {equipmentName} was rejected.",
+            "Rental Rejected"
+        );
 
         TempData["Success"] = "Rental request rejected successfully.";
         return RedirectToAction(nameof(Index));

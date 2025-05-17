@@ -19,7 +19,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.AccessDeniedPath = "/Account/AccessDenied"; // optional
     });
 builder.Services.AddHttpContextAccessor();
-
+builder.Services.AddScoped<NotificationService>();
 var app = builder.Build();
 
 // 4. Middleware

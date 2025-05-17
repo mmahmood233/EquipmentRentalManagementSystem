@@ -15,11 +15,14 @@ namespace EquipmentRental.Web.Controllers
     public class RentalTransactionsController : Controller
     { 
         private readonly EquipmentRentalDbContext _context;
+        private readonly NotificationService _notificationService;
 
-        public RentalTransactionsController(EquipmentRentalDbContext context)
+        public RentalTransactionsController(EquipmentRentalDbContext context, NotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
+
 
         // GET: RentalTransactions
         public async Task<IActionResult> Index(string search = null, string status = null)
@@ -213,7 +216,14 @@ namespace EquipmentRental.Web.Controllers
                 }
                 
                 await _context.SaveChangesAsync();
-                
+                // Notify the customer
+                string equipmentName = equipment?.Name ?? "equipment";
+                await _notificationService.CreateNotification(
+                    rentalTransaction.CustomerId,
+                    $"Your rental for {equipmentName} is confirmed. Please see your transaction details.",
+                    "Rental Confirmed"
+                );
+
                 TempData["Success"] = "Rental transaction created successfully!";
                 return RedirectToAction(nameof(Index));
             }

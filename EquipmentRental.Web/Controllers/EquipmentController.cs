@@ -34,6 +34,63 @@ public class EquipmentController : Controller
         return View(equipmentList);
     }
 
+    [AllowAnonymous]
+    public async Task<IActionResult> Details(int id)
+    {
+        // Get user info
+        var userEmail = User.Identity.IsAuthenticated
+            ? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+            : null;
+        bool canLeaveFeedback = false;
+
+        if (User.IsInRole("Customer") && userEmail != null)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+
+            // Check: Did the user rent this equipment before?
+            bool hasRented = await _context.RentalTransactions
+                .AnyAsync(rt => rt.CustomerId == user.UserId && rt.EquipmentId == id);
+
+            // Check: Did the user already leave feedback for this equipment?
+            bool alreadyLeftFeedback = await _context.Feedbacks
+                .AnyAsync(f => f.UserId == user.UserId && f.EquipmentId == id);
+
+            canLeaveFeedback = hasRented && !alreadyLeftFeedback;
+        }
+
+        ViewBag.CanLeaveFeedback = canLeaveFeedback;
+
+        // Get equipment (with category)
+        var equipment = await _context.Equipment
+            .Include(e => e.Category)
+            .FirstOrDefaultAsync(e => e.EquipmentId == id);
+
+        if (equipment == null)
+        {
+            return NotFound();
+        }
+
+        // Get feedbacks for this equipment, only visible ones for regular users, all for admins/managers
+        var userRole = User.IsInRole("Administrator") || User.IsInRole("Manager") ? "Admin" : "Customer";
+        IQueryable<Feedback> feedbacksQuery = _context.Feedbacks
+            .Where(f => f.EquipmentId == id)
+            .Include(f => f.User)
+            .OrderByDescending(f => f.CreatedAt);
+
+        if (userRole == "Customer")
+        {
+            feedbacksQuery = feedbacksQuery.Where(f => f.IsVisible);
+        }
+
+        var feedbacks = await feedbacksQuery.ToListAsync();
+
+        ViewBag.Feedbacks = feedbacks;
+
+        return View(equipment);
+    }
+
+
+
     [Authorize(Roles = "Administrator,Manager")]
     [HttpGet]
     public async Task<IActionResult> Create()

@@ -1,0 +1,75 @@
+﻿@model EquipmentRental.DataAccess.Models.Equipment
+
+@{
+    ViewData["Title"] = "Equipment Details";
+    var feedbacks = ViewBag.Feedbacks as List<EquipmentRental.DataAccess.Models.Feedback>;
+    bool canLeaveFeedback = ViewBag.CanLeaveFeedback ?? false;
+}
+
+<h2>@Model.Name</h2>
+<hr />
+<div>
+    <p><strong>Description:</strong> @Model.Description</p>
+    <p><strong>Category:</strong> @Model.Category?.CategoryName</p>
+    <p><strong>Rental Price:</strong> @Model.RentalPrice.ToString("C")</p>
+    <p><strong>Status:</strong> @Model.AvailabilityStatus (@Model.ConditionStatus)</p>
+</div>
+
+<hr />
+<h3>Feedback</h3>
+@if (feedbacks != null && feedbacks.Count > 0)
+{
+    foreach (var f in feedbacks)
+    {
+        <div class="card mb-2">
+            <div class="card-body">
+                <div>
+                    <strong>@f.User.FullName</strong>
+                    <span class="text-muted">(@f.CreatedAt.ToString("g"))</span>
+                </div>
+                <div>
+                    Rating:
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        if (i <= f.Rating)
+                        {
+                            <span style="color: gold;">&#9733;</span>
+                        }
+                        else
+                        {
+                            <span style="color: #ddd;">&#9733;</span>
+                        }
+                    }
+                    <span class="sr-only">(@f.Rating)</span>
+                </div>
+                <p>@f.CommentText</p>
+                @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
+                {
+                    <div>
+                        <span class="badge bg-@(f.IsVisible ? "success" : "danger")">
+                            @(f.IsVisible ? "Visible" : "Hidden")
+                        </span>
+                        <a asp-controller="Feedbacks" asp-action="Edit" asp-route-id="@f.FeedbackId" class="btn btn-sm btn-outline-secondary ms-2">Show/Hide</a>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+else
+{
+    <p>No feedback yet for this equipment.</p>
+}
+
+@if (User.IsInRole("Customer") && canLeaveFeedback)
+{
+    <a asp-controller="Feedbacks" asp-action="Create" class="btn btn-success mt-3">Leave Feedback</a>
+}
+
+<a asp-action="Index" class="btn btn-link mt-3">Back to List</a>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

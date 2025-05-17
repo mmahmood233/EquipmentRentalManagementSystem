@@ -11,21 +11,31 @@ namespace EquipmentRental.DataAccess.Models
     {
         [Key]
         public int FeedbackId { get; set; }
+
+        [Required]
         public int EquipmentId { get; set; }
+
         public int UserId { get; set; }
+
+        [Required]
         [StringLength(255)]
-        public string? CommentText { get; set; }
-        public int? Rating { get; set; }
+        public string CommentText { get; set; }
+
+        [Required]
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]
+        public int Rating { get; set; }
+
         [Column(TypeName = "datetime")]
         public DateTime CreatedAt { get; set; }
-        [Required]
-        public bool? IsVisible { get; set; }
 
-        [ForeignKey("EquipmentId")]
-        [InverseProperty("Feedbacks")]
-        public virtual Equipment Equipment { get; set; } = null!;
-        [ForeignKey("UserId")]
-        [InverseProperty("Feedbacks")]
-        public virtual User User { get; set; } = null!;
+        [Required]
+        public bool IsVisible { get; set; }
+
+        [NotMapped]
+        public virtual Equipment? Equipment { get; set; }
+
+        [NotMapped]
+        public virtual User? User { get; set; }
+
     }
 }
