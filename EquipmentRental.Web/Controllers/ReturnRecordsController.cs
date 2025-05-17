@@ -86,8 +86,24 @@ namespace EquipmentRental.Web.Controllers
             {
                 _context.Add(returnRecord);
                 await _context.SaveChangesAsync();
+
+                // ✅ Send notification to customer
+                var transaction = await _context.RentalTransactions
+                    .Include(r => r.Customer)
+                    .FirstOrDefaultAsync(r => r.RentalTransactionId == returnRecord.RentalTransactionId);
+
+                if (transaction != null)
+                {
+                    await CreateNotification(
+                        transaction.CustomerId,
+                        $"Your equipment has been returned. Condition: {returnRecord.ReturnCondition}",
+                        "Return Confirmation"
+                    );
+                }
+
                 return RedirectToAction(nameof(Index));
             }
+
             ViewData["RentalTransactionId"] = new SelectList(_context.RentalTransactions, "RentalTransactionId", "PaymentStatus", returnRecord.RentalTransactionId);
             return View(returnRecord);
         }
@@ -189,6 +205,19 @@ namespace EquipmentRental.Web.Controllers
             
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+        private async Task CreateNotification(int userId, string message, string type)
+        {
+            var notification = new Notification
+            {
+                UserId = userId,
+                Message = message,
+                Type = type,
+                IsRead = false,
+                CreatedAt = DateTime.Now
+            };
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
         }
 
         private bool ReturnRecordExists(int id)

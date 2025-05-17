@@ -35,6 +35,21 @@ namespace EquipmentRental.Web.Controllers
             return View(notifications);
 
         }
+        public async Task CreateSystemNotification(int userId, string message, string type)
+        {
+            var notification = new Notification
+            {
+                UserId = userId,
+                Message = message,
+                Type = type,
+                IsRead = false,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+        }
+
 
         // GET: Notifications/Details/5
         public async Task<IActionResult> Details(int? id)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,17 +9,21 @@ using EquipmentRental.DataAccess.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.Diagnostics;
+using EquipmentRental.Web.Controllers;
 namespace EquipmentRental.Web.Controllers
 {
     [Authorize(Roles = "Customer,Manager,Administrator")]
     public class RentalTransactionsController : Controller
-    { 
+    {
         private readonly EquipmentRentalDbContext _context;
+        private readonly NotificationsController _notificationService;
 
-        public RentalTransactionsController(EquipmentRentalDbContext context)
+        public RentalTransactionsController(EquipmentRentalDbContext context, NotificationsController notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
+
 
         // GET: RentalTransactions
         public async Task<IActionResult> Index(string? search = null, string? status = null)
@@ -165,11 +169,13 @@ namespace EquipmentRental.Web.Controllers
                         "RentalRequestId", "Description", transaction.RentalRequestId);
 
 
+                   
 
                     ViewBag.PrefilledFromRequest = true;
                     return View(transaction);
                 }
             }
+
 
             // Regular create form
             ViewData["CustomerId"] = new SelectList(
@@ -194,8 +200,7 @@ namespace EquipmentRental.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> Create([Bind("RentalRequestId,EquipmentId,CustomerId,RentalStartDate,RentalEndDate,RentalPeriod,RentalFee,Deposit,PaymentStatus")] RentalTransaction rentalTransaction)
-
+        public async Task<IActionResult> Create(RentalTransaction rentalTransaction)
         {
             if (!ModelState.IsValid)
             {
@@ -208,6 +213,14 @@ namespace EquipmentRental.Web.Controllers
                 rentalTransaction.CreatedAt = DateTime.Now;
                 _context.Add(rentalTransaction);
                 await _context.SaveChangesAsync();
+
+                // Send notification to customer
+                await _notificationService.CreateSystemNotification(
+                    rentalTransaction.CustomerId,
+                    $"Your rental request (ID: {rentalTransaction.RentalRequestId}) has been confirmed.",
+                    "Rental Approved"
+                );
+
 
                 // Update RentalRequest and Equipment status
                 var request = await _context.RentalRequests.FindAsync(rentalTransaction.RentalRequestId);
@@ -225,6 +238,14 @@ namespace EquipmentRental.Web.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                // ✅ Notification: now inside POST where rentalTransaction exists
+                await new NotificationsController(_context).CreateSystemNotification(
+                    rentalTransaction.CustomerId,
+                    $"Your rental for Equipment ID {rentalTransaction.EquipmentId} is confirmed.",
+                    "Rental Approved"
+                );
+
                 TempData["Success"] = "Rental transaction created successfully!";
                 return RedirectToAction(nameof(Index));
             }
@@ -233,9 +254,9 @@ namespace EquipmentRental.Web.Controllers
                 ModelState.AddModelError("", $"Error creating transaction: {ex.Message}");
                 PrepareViewData(rentalTransaction);
                 return View(rentalTransaction);
-
             }
         }
+
 
 
         // Helper method to prepare ViewData for forms
@@ -260,6 +281,12 @@ namespace EquipmentRental.Web.Controllers
         public async Task<IActionResult> MarkAsPaid(int id)
         {
             var transaction = await _context.RentalTransactions.FindAsync(id);
+            await _notificationService.CreateSystemNotification(
+    transaction.CustomerId,
+    $"Payment for your rental transaction (ID: {transaction.RentalTransactionId}) has been marked as Paid.",
+    "Payment Status"
+);
+
             if (transaction == null)
             {
                 return NotFound();
