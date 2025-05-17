@@ -1,8 +1,7 @@
-﻿@model ProjectDBClassLibrary.Model.RentalTransaction
+﻿@model EquipmentRental.DataAccess.Models.RentalTransaction
 
 @{
     ViewData["Title"] = "Delete";
-    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <h1>Delete</h1>
@@ -13,16 +12,16 @@
     <hr />
     <dl class="row">
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalTransactionStartDate)
+            @Html.DisplayNameFor(model => model.RentalStartDate)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalTransactionStartDate)
+            @Html.DisplayFor(model => model.RentalStartDate)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RentalTransactionReturnDate)
+            @Html.DisplayNameFor(model => model.RentalEndDate)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RentalTransactionReturnDate)
+            @Html.DisplayFor(model => model.RentalEndDate)
         </dd>
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.RentalPeriod)
@@ -55,22 +54,22 @@
             @Html.DisplayFor(model => model.CreatedAt)
         </dd>
         <dt class = "col-sm-2">
+            @Html.DisplayNameFor(model => model.Customer)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Customer.Email)
+        </dd>
+        <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.Equipment)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Equipment.ConditionStatus)
+            @Html.DisplayFor(model => model.Equipment.AvailabilityStatus)
         </dd>
         <dt class = "col-sm-2">
             @Html.DisplayNameFor(model => model.RentalRequest)
         </dt>
         <dd class = "col-sm-10">
             @Html.DisplayFor(model => model.RentalRequest.Status)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.User)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.User.Email)
         </dd>
     </dl>
     
