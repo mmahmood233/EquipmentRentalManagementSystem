@@ -1,46 +1,71 @@
 ﻿@model EquipmentRental.DataAccess.Models.Feedback
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Leave Feedback";
 }
 
-<h1>Create</h1>
+<h2>Leave Feedback</h2>
 
-<h4>Feedback</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="EquipmentId" class="control-label"></label>
-                <select asp-for="EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <select asp-for="UserId" class ="form-control" asp-items="ViewBag.UserId"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="CommentText" class="control-label"></label>
-                <input asp-for="CommentText" class="form-control" />
-                <span asp-validation-for="CommentText" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Rating" class="control-label"></label>
-                <input asp-for="Rating" class="form-control" />
-                <span asp-validation-for="Rating" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
-        </form>
+@* SHOW ALL MODEL ERRORS AT THE TOP *@
+@Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="EquipmentId">Select Equipment</label>
+        <select asp-for="EquipmentId" class="form-control" asp-items="ViewBag.EquipmentList"></select>
+        <span asp-validation-for="EquipmentId" class="text-danger"></span>
     </div>
-</div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+    <div class="form-group">
+        <label asp-for="Rating">Rating</label>
+        <div id="star-rating" class="mb-2">
+            @for (int i = 1; i <= 5; i++)
+            {
+                <input type="radio" id="star-@i" name="Rating" value="@i" style="display:none;" />
+                <label for="star-@i" style="font-size:2rem; color:#ddd; cursor:pointer;" class="star">&#9733;</label>
+            }
+        </div>
+        <span asp-validation-for="Rating" class="text-danger"></span>
+    </div>
+
+
+    <div class="form-group">
+        <label asp-for="CommentText">Comment</label>
+        <textarea asp-for="CommentText" class="form-control" rows="4" required></textarea>
+        <span asp-validation-for="CommentText" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">Submit Feedback</button>
+</form>
 
 @section Scripts {
+   
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Star rating handler
+        document.querySelectorAll('.star').forEach(function(star, idx, arr) {
+            star.addEventListener('click', function () {
+                var value = idx + 1;
+                document.getElementsByName('Rating').forEach(function(input, i){
+                    input.checked = i < value;
+                    arr[i].style.color = i < value ? 'gold' : '#ddd';
+                });
+            });
+        });
+
+        // Show gold for selected star on load (edit case)
+        window.addEventListener('DOMContentLoaded', function() {
+            var stars = document.querySelectorAll('.star');
+            var selected = document.querySelector('input[name="Rating"]:checked');
+            var value = selected ? parseInt(selected.value) : 0;
+            stars.forEach(function(star, i){
+                star.style.color = i < value ? 'gold' : '#ddd';
+            });
+        });
+    </script>
+}
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

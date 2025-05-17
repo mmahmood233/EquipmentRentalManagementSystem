@@ -100,7 +100,12 @@
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td><strong>@item.Name</strong></td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@item.EquipmentId">
+                                @item.Name
+                            </a>
+                        </td>
+
                         <td>@item.Category?.CategoryName</td>
                         <td>
                             @if (!string.IsNullOrEmpty(item.Description))

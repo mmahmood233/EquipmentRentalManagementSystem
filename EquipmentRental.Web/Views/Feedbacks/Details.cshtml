@@ -1,54 +1,48 @@
 ﻿@model EquipmentRental.DataAccess.Models.Feedback
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Feedback Details";
 }
 
-<h1>Details</h1>
+<h2>Feedback Details</h2>
 
-<div>
-    <h4>Feedback</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CommentText)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CommentText)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Rating)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Rating)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CreatedAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CreatedAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IsVisible)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsVisible)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Equipment)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Equipment.AvailabilityStatus)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.User)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.User.Email)
-        </dd>
-    </dl>
+<div class="card mt-3 mb-3">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Equipment</dt>
+            <dd class="col-sm-9">@Model.Equipment?.Name</dd>
+
+            <dt class="col-sm-3">User</dt>
+            <dd class="col-sm-9">@Model.User?.FullName</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@Model.CreatedAt.ToString("g")</dd>
+
+            <dt class="col-sm-3">Rating</dt>
+            <dd class="col-sm-9">
+                @for (var i = 1; i <= 5; i++)
+                {
+                    if (i <= Model.Rating)
+                    {
+                        <span style="color: gold;">&#9733;</span>
+                    }
+                    else
+                    {
+                        <span style="color: #ddd;">&#9733;</span>
+                    }
+                }
+                <span class="sr-only">(@Model.Rating)</span>
+            </dd>
+
+            <dt class="col-sm-3">Comment</dt>
+            <dd class="col-sm-9">@Model.CommentText</dd>
+        </dl>
+        <a asp-action="Index" class="btn btn-secondary">Back</a>
+    </div>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.FeedbackId">Edit</a> |
-    <a asp-action="Index">Back to List</a>
-</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

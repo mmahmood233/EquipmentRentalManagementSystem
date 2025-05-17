@@ -67,12 +67,28 @@ namespace EquipmentRental.Web.Controllers
         // GET: Feedbacks/Create
         [Authorize(Roles = "Customer")]
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "AvailabilityStatus");
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "Email");
+            var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+
+            // Get only equipment the current user has rented (rental completed)
+            var rentedEquipmentIds = await _context.RentalTransactions
+                .Where(rt => rt.CustomerId == user.UserId)
+                .Select(rt => rt.EquipmentId)
+                .Distinct()
+                .ToListAsync();
+
+            var equipmentList = _context.Equipment
+                .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId))
+                .Select(eq => new { eq.EquipmentId, eq.Name })
+                .ToList();
+
+            ViewBag.EquipmentList = new SelectList(equipmentList, "EquipmentId", "Name");
+
             return View();
         }
+
 
         // POST: Feedbacks/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
@@ -81,22 +97,72 @@ namespace EquipmentRental.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("FeedbackId,EquipmentId,UserId,CommentText,Rating,CreatedAt,IsVisible")] Feedback feedback)
+        public async Task<IActionResult> Create([Bind("EquipmentId,CommentText,Rating")] Feedback feedback)
         {
+            var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
+
+            // Only allow feedback for rented equipment
+            bool hasRented = await _context.RentalTransactions
+                .AnyAsync(rt => rt.CustomerId == user.UserId && rt.EquipmentId == feedback.EquipmentId);
+            if (!hasRented)
+            {
+                ModelState.AddModelError("EquipmentId", "You can only leave feedback for equipment you have rented.");
+                // re-populate dropdown
+                var rentedEquipmentIds = await _context.RentalTransactions
+                    .Where(rt => rt.CustomerId == user.UserId)
+                    .Select(rt => rt.EquipmentId)
+                    .Distinct()
+                    .ToListAsync();
+
+                var equipmentList = _context.Equipment
+                    .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId))
+                    .Select(eq => new { eq.EquipmentId, eq.Name })
+                    .ToList();
+
+                ViewBag.EquipmentList = new SelectList(equipmentList, "EquipmentId", "Name", feedback.EquipmentId);
+                return View(feedback);
+            }
+
+            feedback.UserId = user.UserId;
+            feedback.CreatedAt = DateTime.Now;
+            feedback.IsVisible = true;
+            if (!ModelState.IsValid)
+            {
+                foreach (var key in ModelState.Keys)
+                {
+                    foreach (var error in ModelState[key].Errors)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"KEY: {key} -- ERROR: {error.ErrorMessage}");
+                    }
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(feedback);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "AvailabilityStatus", feedback.EquipmentId);
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "Email", feedback.UserId);
+
+            // If invalid, repopulate dropdown
+            var rentedIds = await _context.RentalTransactions
+                .Where(rt => rt.CustomerId == user.UserId)
+                .Select(rt => rt.EquipmentId)
+                .Distinct()
+                .ToListAsync();
+
+            var equipmentListAgain = _context.Equipment
+                .Where(eq => rentedIds.Contains(eq.EquipmentId))
+                .Select(eq => new { eq.EquipmentId, eq.Name })
+                .ToList();
+
+            ViewBag.EquipmentList = new SelectList(equipmentListAgain, "EquipmentId", "Name", feedback.EquipmentId);
             return View(feedback);
         }
 
         // GET: Feedbacks/Edit/5
         [Authorize(Roles = "Manager,Administrator")]
-
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null || _context.Feedbacks == null)
@@ -104,13 +170,14 @@ namespace EquipmentRental.Web.Controllers
                 return NotFound();
             }
 
-            var feedback = await _context.Feedbacks.FindAsync(id);
+            var feedback = await _context.Feedbacks
+                .Include(f => f.Equipment)
+                .Include(f => f.User)
+                .FirstOrDefaultAsync(f => f.FeedbackId == id);
             if (feedback == null)
             {
                 return NotFound();
             }
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "AvailabilityStatus", feedback.EquipmentId);
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "Email", feedback.UserId);
             return View(feedback);
         }
 
