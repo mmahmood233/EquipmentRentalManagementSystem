@@ -8,6 +8,10 @@ html {
   }
 }
 
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
 html {
   position: relative;
   min-height: 100%;
@@ -15,4 +19,21 @@ html {
 
 body {
   margin-bottom: 60px;
+}
+.highlighted-search-result {
+    background-color: #cce5ff !important;
+    border: 2px dashed #3399ff;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 0 5px rgba(51, 153, 255, 0.5);
+    position: relative;
+    z-index: 1000;
+    outline: 3px solid #3399ff;
+    box-shadow: 0 0 10px rgba(51, 153, 255, 0.5);
+}
+.table-hover tbody tr:hover {
+    background-color: #f5f9ff;
+    transition: background-color 0.3s ease;
 }

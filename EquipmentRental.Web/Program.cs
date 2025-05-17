@@ -1,45 +1,51 @@
-﻿using EquipmentRental.DataAccess.Models;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using ProjectDBClassLibrary.Model;
+using AdvancedProgrammingASPProject.Areas.Identity.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add MVC
+// Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// 2. Register DbContext
-builder.Services.AddDbContext<EquipmentRentalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Register the main app DB context
+builder.Services.AddDbContext<ProjectDBContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectDBContext")));
 
-// 3. Configure Authentication (MUST be before builder.Build())
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Account/Login";
-        options.AccessDeniedPath = "/Account/AccessDenied"; // optional
-    });
-builder.Services.AddHttpContextAccessor();
+// Register the Identity DB context
+builder.Services.AddDbContext<AdvancedProgrammingASPProjectContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AdvancedProgrammingASPProjectContextConnection")));
+
+// Add Identity support
+builder.Services.AddDefaultIdentity<Users>(options => options.SignIn.RequireConfirmedAccount = false)
+    .AddEntityFrameworkStores<AdvancedProgrammingASPProjectContext>();
+
+builder.Services.AddScoped<LogService>();
+
 
 var app = builder.Build();
 
-// 4. Middleware
+//  SYNC USERS FROM MAIN DB TO IDENTITY DB
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    await SeedUsers.SyncMainUsersAsync(services);
+}
+
+// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
-// ✅ These MUST be between routing and endpoints
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapRazorPages();
 
 app.Run();

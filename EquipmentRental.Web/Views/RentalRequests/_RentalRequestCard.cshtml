@@ -1,0 +1,38 @@
+﻿@model ProjectDBClassLibrary.Model.RentalRequest
+
+<div class="col-md-6">
+  <div class="card shadow-sm h-100 
+    @(Model.Status == "Pending" ? "bg-light-blue" : "") 
+    @(Model.Status == "Denied" ? "bg-light-red" : "")">
+
+
+        <div class="card-body position-relative">
+            <h5 class="card-title">@Model.Equipment?.Name</h5>
+            <small class="text-muted position-absolute top-0 end-0 m-2">@Model.CreatedAt.ToShortDateString()</small>
+            <p class="mb-1"><span class="info-label">User:</span> @Model.User.Fullname</p>
+            <p class="mb-1"><span class="info-label">Total Cost:</span> @Model.TotalCost.ToString("C")</p>
+            <p class="mb-1"><span class="info-label">Status:</span> @Model.Status</p>
+            <div class="d-flex justify-content-between small mt-3">
+                <span>Start: @Model.StartDate.ToShortDateString()</span>
+                <span>Return: @Model.ReturnDate.ToShortDateString()</span>
+            </div>
+        </div>
+        <div class="card-footer d-flex flex-wrap justify-content-end gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.RentalRequestId" class="btn btn-sm btn-custom">
+                <i class="bi bi-pencil-fill"></i> Edit
+            </a>
+            <a asp-action="Delete" asp-route-id="@Model.RentalRequestId" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-trash-fill"></i> Delete
+            </a>
+            <a asp-controller="RentalTransactions" asp-action="HandlePayment" asp-route-rentalRequestId="@Model.RentalRequestId" class="btn btn-sm btn-custom">
+                <i class="bi bi-cash-coin"></i> Pay
+            </a>
+            @if (Model.RentalTransactions != null && Model.RentalTransactions.Any())
+            {
+                    <a asp-controller="ReturnInfoes" asp-action="HandleReturn" asp-route-rentalRequestId="@Model.RentalRequestId" class="btn btn-sm btn-custom">
+                        <i class="bi bi-box-arrow-in-down"></i> Return
+                    </a>
+            }
+        </div>
+    </div>
+</div>

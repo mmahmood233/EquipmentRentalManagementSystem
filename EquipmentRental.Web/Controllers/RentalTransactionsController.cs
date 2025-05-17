@@ -1,476 +1,780 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using AdvancedProgrammingASPProject.Areas.Identity.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using EquipmentRental.DataAccess.Models;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using System.Diagnostics;
-namespace EquipmentRental.Web.Controllers
-{
-    [Authorize(Roles = "Customer,Manager,Administrator")]
-    public class RentalTransactionsController : Controller
-    { 
-        private readonly EquipmentRentalDbContext _context;
+using ProjectDBClassLibrary.Model;
 
-        public RentalTransactionsController(EquipmentRentalDbContext context)
+namespace AdvancedProgrammingASPProject.Controllers
+{
+    [Authorize]
+    public class RentalTransactionsController : Controller
+    {
+        private readonly ProjectDBContext _context;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly UserManager<Users> _userManager;
+
+        public RentalTransactionsController(ProjectDBContext context, IWebHostEnvironment webHostEnvironment, UserManager<Users> userManager)
         {
             _context = context;
+            _webHostEnvironment = webHostEnvironment;
+            _userManager = userManager;
         }
 
-        // GET: RentalTransactions
-        public async Task<IActionResult> Index(string? search = null, string? status = null)
+        private async Task<(User mainUser, bool isAdminOrManager, bool isCustomer)> GetCurrentUser()
         {
-            try
-            {
-                // Get current user ID
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var isCustomer = User.IsInRole("Customer");
-                var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator");
-                
-                Debug.WriteLine($"User ID: {userId}, IsCustomer: {isCustomer}, IsManager: {isManager}");
-                
-                // Base query with all necessary includes
-                IQueryable<RentalTransaction> query = _context.RentalTransactions
-                    .Include(r => r.Customer)
-                    .Include(r => r.Equipment)
-                    .Include(r => r.RentalRequest)
-                    .Include(r => r.Documents)
-                    .AsQueryable();
-                
-                // Apply role-based filtering - customers can only see their own transactions
-                if (isCustomer && !isManager)
-                {
-                    query = query.Where(r => r.CustomerId == userId);
-                    Debug.WriteLine($"Filtering for customer {userId}'s transactions only");
-                }
-                
-                // Apply search filter if provided
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    query = query.Where(r => 
-                        r.Equipment.Name.Contains(search) || 
-                        r.PaymentStatus.Contains(search) ||
-                       r.RentalRequest.Description.Contains(search!));
-                    
-                    Debug.WriteLine($"Applied search filter: {search}");
-                }
-                
-                // Apply status filter if provided
-                if (!string.IsNullOrWhiteSpace(status))
-                {
-                    query = query.Where(r => r.PaymentStatus == status);
-                    Debug.WriteLine($"Applied status filter: {status}");
-                }
-                
-                // Get final results ordered by creation date (newest first)
-                var transactions = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
-                Debug.WriteLine($"Found {transactions.Count} transactions");
-                
-                // Prepare view data
-                ViewBag.Search = search;
-                ViewBag.Status = status;
-                ViewBag.StatusOptions = new[] { "All", "Paid", "Pending", "Refunded", "Cancelled" };
-                
-                return View(transactions);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error in RentalTransactions Index: {ex.Message}");
-                TempData["Error"] = $"An error occurred: {ex.Message}";
-                return View(new List<RentalTransaction>());
-            }
+            var identityUser = await _userManager.GetUserAsync(User);
+            var mainUser = identityUser?.MainUserId != null
+                ? await _context.Users.FindAsync(identityUser.MainUserId)
+                : null;
+
+            bool isAdminOrManager = mainUser != null && (mainUser.RoleId == 1 || mainUser.RoleId == 3);
+            bool isCustomer = mainUser != null && mainUser.RoleId == 2;
+
+            return (mainUser, isAdminOrManager, isCustomer);
+        }
+
+        public async Task<IActionResult> Index(int? searchId, int? equipmentFilter, string? paymentStatusFilter, int page = 1)
+        {
+            int pageSize = 15;
+
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
+
+            var transactions = _context.RentalTransactions
+                .Include(r => r.Equipment)
+                .Include(r => r.RentalRequest)
+                .Include(r => r.User)
+                .Include(r => r.ReturnInfos)
+                .AsQueryable();
+
+            if (isCustomer)
+                transactions = transactions.Where(t => t.UserId == mainUser.UserId);
+
+            if (equipmentFilter.HasValue)
+                transactions = transactions.Where(t => t.EquipmentId == equipmentFilter.Value);
+
+            if (!string.IsNullOrEmpty(paymentStatusFilter))
+                transactions = transactions.Where(t => t.PaymentStatus == paymentStatusFilter);
+
+            if (searchId.HasValue)
+                transactions = transactions.Where(t => t.RentalTransactionId == searchId.Value);
+
+            var totalItems = await transactions.CountAsync();
+            var items = await transactions.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            ViewBag.EquipmentFilter = new SelectList(await _context.Equipments.ToListAsync(), "EquipmentId", "Name", equipmentFilter);
+            ViewBag.PaymentStatusFilter = new SelectList(new List<string> { "Paid", "Partially Paid", "Not yet" }, paymentStatusFilter);
+            ViewBag.IsAdminOrManager = isAdminOrManager;
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+
+            return View(items);
         }
 
 
-        // GET: RentalTransactions/Details/5
+
+
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var rentalTransaction = await _context.RentalTransactions
-                .Include(r => r.Customer)
                 .Include(r => r.Equipment)
                 .Include(r => r.RentalRequest)
-                .Include(r => r.Documents)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.RentalTransactionId == id);
-                
-            if (rentalTransaction == null)
-            {
-                return NotFound();
-            }
-            
-            // Check authorization - customers can only view their own transactions
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator");
-            
-            if (!isManager && rentalTransaction.CustomerId != userId)
-            {
-                return Forbid();
-            }
-            
-            // Set ViewBag data for authorization checks in the view
-            ViewBag.IsManager = isManager;
-            ViewBag.CanManageFiles = isManager;
-            ViewBag.UserId = userId;
-            ViewBag.TransactionId = id; // Explicitly set the transaction ID in ViewBag
-            
+
+            if (rentalTransaction == null) return NotFound();
+
             return View(rentalTransaction);
         }
 
-        // GET: RentalTransactions/Create
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> Create(int? requestId = null)
+        public async Task<IActionResult> HandlePayment(int rentalRequestId)
         {
-            // If requestId is provided, pre-fill the form with rental request data
-            if (requestId.HasValue)
+            var existingTransaction = await _context.RentalTransactions
+                .FirstOrDefaultAsync(t => t.RentalRequestId == rentalRequestId);
+
+            if (existingTransaction != null)
             {
-                var request = await _context.RentalRequests
-                    .Include(r => r.Customer)
-                    .Include(r => r.Equipment)
-                    .FirstOrDefaultAsync(r => r.RentalRequestId == requestId);
-                
-                if (request != null && request.Status == "Approved")
-                {
-                    var transaction = new RentalTransaction
-                    {
-                        RentalRequestId = request.RentalRequestId,
-                        EquipmentId = request.EquipmentId,
-                        CustomerId = request.CustomerId,
-                        RentalStartDate = request.RentalStartDate,
-                        RentalEndDate = request.RentalEndDate,
-                        RentalPeriod = (int)(request.RentalEndDate - request.RentalStartDate).TotalDays,
-                        RentalFee = request.TotalCost,
-                        Deposit = request.TotalCost * 0.2m, // 20% deposit as default
-                        PaymentStatus = "Pending",
-                        CreatedAt = DateTime.Now
-                    };
-
-                    ViewData["CustomerId"] = new SelectList(
-                        _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
-                        "UserId", "Email", transaction.CustomerId);
-
-                    ViewData["EquipmentId"] = new SelectList(
-                        _context.Equipment.Where(e => e.AvailabilityStatus == "Reserved" || e.EquipmentId == request.EquipmentId),
-                        "EquipmentId", "Name", transaction.EquipmentId);
-
-                    ViewData["RentalRequestId"] = new SelectList(
-                        _context.RentalRequests.Where(r => r.Status == "Approved"),
-                        "RentalRequestId", "Description", transaction.RentalRequestId);
-
-
-
-                    ViewBag.PrefilledFromRequest = true;
-                    return View(transaction);
-                }
+                return RedirectToAction("Edit", new { id = existingTransaction.RentalTransactionId });
             }
-
-            // Regular create form
-            ViewData["CustomerId"] = new SelectList(
-        _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
-        "UserId", "Email");
-
-            ViewData["EquipmentId"] = new SelectList(
-                _context.Equipment.Where(e => e.AvailabilityStatus != "Maintenance"),
-                "EquipmentId", "Name");
-
-            ViewData["RentalRequestId"] = new SelectList(
-                _context.RentalRequests.Where(r => r.Status == "Approved"),
-                "RentalRequestId", "Description");
-
-
-            return View();
-        }
-
-        // POST: RentalTransactions/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> Create(RentalTransaction rentalTransaction)
-        {
-            if (!ModelState.IsValid)
+            else
             {
-                PrepareViewData(rentalTransaction);
-                return View(rentalTransaction);
-            }
-
-            try
-            {
-                rentalTransaction.CreatedAt = DateTime.Now;
-                _context.Add(rentalTransaction);
-                await _context.SaveChangesAsync();
-
-                // Update RentalRequest and Equipment status
-                var request = await _context.RentalRequests.FindAsync(rentalTransaction.RentalRequestId);
-                if (request != null)
-                {
-                    request.Status = "Confirmed";
-                    _context.Update(request);
-                }
-
-                var equipment = await _context.Equipment.FindAsync(rentalTransaction.EquipmentId);
-                if (equipment != null)
-                {
-                    equipment.AvailabilityStatus = "In Use";
-                    _context.Update(equipment);
-                }
-
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Rental transaction created successfully!";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception ex)
-            {
-                ModelState.AddModelError("", $"Error creating transaction: {ex.Message}");
-                PrepareViewData(rentalTransaction);
-                return View(rentalTransaction);
+                return RedirectToAction("Create", new { rentalRequestId = rentalRequestId });
             }
         }
 
-
-        // Helper method to prepare ViewData for forms
-        private void PrepareViewData(RentalTransaction transaction)
+        public async Task<IActionResult> Create(int? rentalRequestId)
         {
-            ViewData["CustomerId"] = new SelectList(
-                _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
-                "UserId", "Email", transaction.CustomerId);
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
 
-            ViewData["EquipmentId"] = new SelectList(
-                _context.Equipment.Where(e => e.AvailabilityStatus != "Maintenance" || e.EquipmentId == transaction.EquipmentId),
-                "EquipmentId", "Name", transaction.EquipmentId);
-
-            ViewData["RentalRequestId"] = new SelectList(
-                _context.RentalRequests.Where(r => r.Status == "Approved" || r.RentalRequestId == transaction.RentalRequestId),
-                "RentalRequestId", "Description", transaction.RentalRequestId);
-        }
-
-
-        // GET: RentalTransactions/MarkAsPaid/5
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> MarkAsPaid(int id)
-        {
-            var transaction = await _context.RentalTransactions.FindAsync(id);
-            if (transaction == null)
-            {
-                return NotFound();
-            }
-            
-            // Update payment status to Paid
-            transaction.PaymentStatus = "Paid";
-            _context.Update(transaction);
-            await _context.SaveChangesAsync();
-            
-            TempData["Success"] = "Payment status updated to Paid successfully!";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-        
-        // GET: RentalTransactions/PrintReceipt/5
-        [Authorize(Roles = "Manager,Administrator,Customer")]
-        public async Task<IActionResult> PrintReceipt(int id)
-        {
-            var transaction = await _context.RentalTransactions
-                .Include(r => r.Customer)
-                .Include(r => r.Equipment)
-                .Include(r => r.RentalRequest)
-                .FirstOrDefaultAsync(m => m.RentalTransactionId == id);
-                
-            if (transaction == null)
-            {
-                return NotFound();
-            }
-            
-            // Check authorization - customers can only view their own transactions
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator");
-            
-            if (!isManager && transaction.CustomerId != userId)
-            {
+            if (!isAdminOrManager)
                 return Forbid();
-            }
-            
-            // Generate receipt view
-            return View(transaction);
-        }
-        
-        // GET: RentalTransactions/SelectRequest
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> SelectRequest()
-        {
-            // Get all approved rental requests that don't have transactions yet
-            var approvedRequests = await _context.RentalRequests
-                .Include(r => r.Customer)
+
+            if (rentalRequestId == null) return NotFound();
+
+            var rentalRequest = await _context.RentalRequests
                 .Include(r => r.Equipment)
-                .Include(r => r.RentalTransactions)
-                .Where(r => r.Status == "Approved" && !r.RentalTransactions.Any())
-                .ToListAsync();
-            
-            return View(approvedRequests);
-        }
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.RentalRequestId == rentalRequestId);
 
-        // GET: RentalTransactions/GetRequestDetails/5
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> GetRequestDetails(int id)
-        {
-            var request = await _context.RentalRequests
-                .Include(r => r.Customer)
-                .Include(r => r.Equipment)
-                .FirstOrDefaultAsync(r => r.RentalRequestId == id);
+            if (rentalRequest == null) return NotFound();
 
-            if (request == null)
-            {
-                return NotFound();
-            }
-
-            // Create a new transaction based on the request
             var transaction = new RentalTransaction
             {
-                RentalRequestId = request.RentalRequestId,
-                EquipmentId = request.EquipmentId,
-                CustomerId = request.CustomerId,
-                RentalStartDate = request.RentalStartDate,
-                RentalEndDate = request.RentalEndDate,
-                RentalPeriod = (int)(request.RentalEndDate - request.RentalStartDate).TotalDays,
-                RentalFee = request.TotalCost,
-                Deposit = request.TotalCost * 0.2m, // 20% deposit as default
-                PaymentStatus = "Pending",
-                CreatedAt = DateTime.Now
+                RentalRequestId = rentalRequest.RentalRequestId,
+                EquipmentId = rentalRequest.EquipmentId,
+                UserId = rentalRequest.UserId,
+                RentalTransactionStartDate = rentalRequest.StartDate,
+                RentalTransactionReturnDate = rentalRequest.ReturnDate,
+                RentalFee = rentalRequest.TotalCost,
+                RentalPeriod = (rentalRequest.ReturnDate - rentalRequest.StartDate).Days,
+                CreatedAt = DateTime.Now,
+                PaymentStatus = "Not yet",
+                User = rentalRequest.User,
+                Equipment = rentalRequest.Equipment
             };
 
-            // Prepare view data
-            ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email", transaction.CustomerId);
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "Name", transaction.EquipmentId);
-            ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests.Where(r => r.Status == "Approved"), "RentalRequestId", "Description", transaction.RentalRequestId);
-            
-            ViewBag.PrefilledFromRequest = true;
-            return View("Create", transaction);
+            return View(transaction);
         }
 
-        // GET: RentalTransactions/Edit/5
-        [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
 
-            var rentalTransaction = await _context.RentalTransactions.FindAsync(id);
-            if (rentalTransaction == null)
-            {
-                return NotFound();
-            }
-            ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email", rentalTransaction.CustomerId);
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "Name", rentalTransaction.EquipmentId);
-            ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Description", rentalTransaction.RentalRequestId);
-            return View(rentalTransaction);
-        }
-
-        // POST: RentalTransactions/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("RentalTransactionId,RentalRequestId,EquipmentId,CustomerId,RentalStartDate,RentalEndDate,RentalPeriod,RentalFee,Deposit,PaymentStatus")] RentalTransaction rentalTransaction)
+        public async Task<IActionResult> Create(RentalTransaction rentalTransaction, IFormFile DocumentFile)
         {
-            if (id != rentalTransaction.RentalTransactionId)
+            ModelState.Remove("RentalRequest");
+            ModelState.Remove("User");
+            ModelState.Remove("Equipment");
+            ModelState.Remove("PaymentStatus");
+            ModelState.Remove("DocumentFile");
+
+            var rentalRequest = await _context.RentalRequests
+                .Include(r => r.Equipment)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.RentalRequestId == rentalTransaction.RentalRequestId);
+
+            if (rentalRequest == null) return NotFound();
+
+            if (rentalRequest.Status != "Approved")
             {
-                return NotFound();
+                ModelState.AddModelError("", "Transaction cannot be created unless the Rental Request is approved.");
+                rentalTransaction.User = rentalRequest.User;
+                rentalTransaction.Equipment = rentalRequest.Equipment;
+                return View(rentalTransaction);
             }
+
+            if (rentalTransaction.Deposit > rentalTransaction.RentalFee)
+            {
+                ModelState.AddModelError("Deposit", "Deposit cannot exceed Rental Fee.");
+                rentalTransaction.User = rentalRequest.User;
+                rentalTransaction.Equipment = rentalRequest.Equipment;
+                return View(rentalTransaction);
+            }
+
+
+
+
+            double totalDue = rentalTransaction.RentalFee;
+            var returnInfo = await _context.ReturnInfos.FirstOrDefaultAsync(r => r.TransactionId == rentalTransaction.RentalTransactionId);
+            if (returnInfo != null)
+                totalDue += (returnInfo.LateReturnFees ?? 0) + (returnInfo.AdditionalCharges ?? 0);
+
+            double paid = rentalTransaction.Deposit + (returnInfo?.PaidLateFees ?? 0);
+            if (paid == 0)
+                rentalTransaction.PaymentStatus = "Not yet";
+            else if (paid < totalDue)
+                rentalTransaction.PaymentStatus = "Partially Paid";
+            else
+                rentalTransaction.PaymentStatus = "Paid";
+
+
+            rentalTransaction.CreatedAt = DateTime.Now;
+
+            if (DocumentFile != null && DocumentFile.Length > 0)
+            {
+                var uploadsPath = Path.Combine(_webHostEnvironment.WebRootPath, "documents");
+                Directory.CreateDirectory(uploadsPath);
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(DocumentFile.FileName);
+                var filePath = Path.Combine(uploadsPath, fileName);
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await DocumentFile.CopyToAsync(stream);
+                rentalTransaction.DocumentPath = fileName;
+
+                // Save document to Document table
+                var documentEntry = new Document
+                {
+                    UserId = rentalTransaction.UserId,
+                    FileName = fileName,
+                    FileType = GetMimeTypeFromExtension(Path.GetExtension(DocumentFile.FileName)),
+
+                    UploadDate = DateTime.Now
+                };
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    await DocumentFile.CopyToAsync(memoryStream);
+                    documentEntry.FileUpload = memoryStream.ToArray();
+                }
+
+                _context.Documents.Add(documentEntry);
+
+            }
+
+            _context.Add(rentalTransaction);
+
+            rentalRequest.TotalCost = rentalTransaction.RentalFee;
+            rentalRequest.StartDate = rentalTransaction.RentalTransactionStartDate;
+            rentalRequest.ReturnDate = rentalTransaction.RentalTransactionReturnDate;
+
+            await _context.SaveChangesAsync();
+
+            var notification = new Notification
+            {
+                Type = "Rental Transaction Created",
+                Message = "A new rental transaction has been created for your rental request.",
+                Status = false
+            };
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            _context.NotificationUsers.Add(new NotificationUser
+            {
+                NotificationId = notification.NotificationId,
+                UserId = rentalRequest.UserId
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["CreateMessage"] = "Rental Transaction created successfully!";
+            return RedirectToAction(nameof(Index));
+        }
+
+
+
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var transaction = await _context.RentalTransactions
+                .Include(r => r.Equipment)
+                .Include(r => r.User)
+                .Include(r => r.RentalRequest)
+                .FirstOrDefaultAsync(r => r.RentalTransactionId == id);
+
+            if (transaction == null) return NotFound();
+
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
+            if (isCustomer) return Forbid();
+
+            return View(transaction);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, RentalTransaction rentalTransaction, IFormFile DocumentFile, string ExistingDocumentPath, bool RemoveDocument)
+
+        {
+            ModelState.Remove("RentalRequest");
+            ModelState.Remove("User");
+            ModelState.Remove("Equipment");
+            ModelState.Remove("PaymentStatus");
+            ModelState.Remove("DocumentFile");
+            ModelState.Remove("ExistingDocumentPath");
+
+
+            if (id != rentalTransaction.RentalTransactionId) return NotFound();
+
+            var rentalRequest = await _context.RentalRequests
+                .Include(r => r.Equipment)
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.RentalRequestId == rentalTransaction.RentalRequestId);
+
+            if (rentalRequest == null) return NotFound();
+
+
+
+            int days = (rentalTransaction.RentalTransactionReturnDate - rentalTransaction.RentalTransactionStartDate).Days;
+            rentalTransaction.RentalPeriod = days > 0 ? days : 0;
+            rentalTransaction.RentalFee = rentalTransaction.RentalPeriod * rentalRequest.Equipment.RentalPrice;
+
+
+            if (rentalTransaction.Deposit > rentalTransaction.RentalFee)
+            {
+                ModelState.AddModelError("Deposit", "Deposit cannot exceed Rental Fee.");
+                rentalTransaction.User = rentalRequest.User;
+                rentalTransaction.Equipment = rentalRequest.Equipment;
+                return View(rentalTransaction);
+            }
+
+
+            double totalDue = rentalTransaction.RentalFee;
+            var returnInfo = await _context.ReturnInfos.FirstOrDefaultAsync(r => r.TransactionId == rentalTransaction.RentalTransactionId);
+            if (returnInfo != null)
+                totalDue += (returnInfo.LateReturnFees ?? 0) + (returnInfo.AdditionalCharges ?? 0);
+
+            double paid = rentalTransaction.Deposit + (returnInfo?.PaidLateFees ?? 0);
+            if (paid == 0)
+                rentalTransaction.PaymentStatus = "Not yet";
+            else if (paid < totalDue)
+                rentalTransaction.PaymentStatus = "Partially Paid";
+            else
+                rentalTransaction.PaymentStatus = "Paid";
+
+
+            if (rentalTransaction.CreatedAt < new DateTime(1753, 1, 1))
+                rentalTransaction.CreatedAt = DateTime.Now;
+
+            // Handle document logic
+            if (RemoveDocument)
+            {
+                // Delete the file
+                if (!string.IsNullOrEmpty(ExistingDocumentPath))
+                {
+                    var oldPath = Path.Combine(_webHostEnvironment.WebRootPath, "documents", ExistingDocumentPath);
+                    if (System.IO.File.Exists(oldPath))
+                        System.IO.File.Delete(oldPath);
+
+                    // Delete document from the database
+                    var oldDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == ExistingDocumentPath);
+                    if (oldDoc != null)
+                    {
+                        _context.Documents.Remove(oldDoc);
+                    }
+                }
+
+                rentalTransaction.DocumentPath = null;
+            }
+
+            else if (DocumentFile != null && DocumentFile.Length > 0)
+            {
+                // Replace with new file
+                if (!string.IsNullOrEmpty(ExistingDocumentPath))
+                {
+                    var oldPath = Path.Combine(_webHostEnvironment.WebRootPath, "documents", ExistingDocumentPath);
+                    if (System.IO.File.Exists(oldPath))
+                        System.IO.File.Delete(oldPath);
+                }
+
+                var uploadsPath = Path.Combine(_webHostEnvironment.WebRootPath, "documents");
+                Directory.CreateDirectory(uploadsPath);
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(DocumentFile.FileName);
+                var filePath = Path.Combine(uploadsPath, fileName);
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await DocumentFile.CopyToAsync(stream);
+                rentalTransaction.DocumentPath = fileName;
+
+
+                // Delete old document record if exists
+                var oldDoc = await _context.Documents.FirstOrDefaultAsync(d => d.FileName == ExistingDocumentPath);
+                if (oldDoc != null)
+                {
+                    _context.Documents.Remove(oldDoc);
+                }
+
+
+                // Save document to Document table
+                var documentEntry = new Document
+                {
+                    UserId = rentalTransaction.UserId,
+                    FileName = fileName,
+                    FileType = GetMimeTypeFromExtension(Path.GetExtension(DocumentFile.FileName)),
+
+                    UploadDate = DateTime.Now
+                };
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    await DocumentFile.CopyToAsync(memoryStream);
+                    documentEntry.FileUpload = memoryStream.ToArray();
+                }
+
+                _context.Documents.Add(documentEntry);
+
+            }
+            else
+            {
+                rentalTransaction.DocumentPath = ExistingDocumentPath;
+            }
+
+            rentalTransaction.User = rentalRequest.User;
+            rentalTransaction.Equipment = rentalRequest.Equipment;
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    // Preserve the original creation date
-                    var originalTransaction = await _context.RentalTransactions.AsNoTracking()
-                        .FirstOrDefaultAsync(t => t.RentalTransactionId == id);
-                        
-                    if (originalTransaction != null)
-                    {
-                        rentalTransaction.CreatedAt = originalTransaction.CreatedAt;
-                    }
-                    else
-                    {
-                        rentalTransaction.CreatedAt = DateTime.Now;
-                    }
-                    
+                    rentalRequest.TotalCost = rentalTransaction.RentalFee;
+                    rentalRequest.StartDate = rentalTransaction.RentalTransactionStartDate;
+                    rentalRequest.ReturnDate = rentalTransaction.RentalTransactionReturnDate;
+                    _context.Update(rentalRequest);
+
                     _context.Update(rentalTransaction);
+                    await _context.SaveChangesAsync();
+
+                    var notification = new Notification
+                    {
+                        Type = "Rental Transaction Updated",
+                        Message = "Your rental transaction has been updated.",
+                        Status = false
+                    };
+                    _context.Notifications.Add(notification);
+                    await _context.SaveChangesAsync();
+
+                    _context.NotificationUsers.Add(new NotificationUser
+                    {
+                        NotificationId = notification.NotificationId,
+                        UserId = rentalRequest.UserId
+                    });
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!RentalTransactionExists(rentalTransaction.RentalTransactionId))
-                    {
+                    if (!_context.RentalTransactions.Any(e => e.RentalTransactionId == id))
                         return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    else throw;
                 }
+
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email", rentalTransaction.CustomerId);
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "Name", rentalTransaction.EquipmentId);
-            ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests, "RentalRequestId", "Description", rentalTransaction.RentalRequestId);
+
             return View(rentalTransaction);
         }
 
-        // GET: RentalTransactions/Delete/5
-        [Authorize(Roles = "Manager,Administrator")]
+
+
+        [HttpGet("/api/rental-request/{id}/price")]
+        public async Task<IActionResult> GetRentalPrice(int id, DateTime startDate, DateTime returnDate)
+        {
+            var request = await _context.RentalRequests
+                .Include(r => r.Equipment)
+                .FirstOrDefaultAsync(r => r.RentalRequestId == id);
+
+            if (request == null || request.Equipment == null)
+                return NotFound();
+
+            int period = (returnDate - startDate).Days;
+            double fee = (period > 0 ? period : 0) * request.Equipment.RentalPrice;
+
+            return Json(new { period, fee });
+        }
+
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var rentalTransaction = await _context.RentalTransactions
-                .Include(r => r.Customer)
                 .Include(r => r.Equipment)
                 .Include(r => r.RentalRequest)
-                .Include(r => r.Documents)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.RentalTransactionId == id);
-            if (rentalTransaction == null)
-            {
-                return NotFound();
-            }
+
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
+
+            if (isCustomer) return Forbid();
+
+            if (rentalTransaction == null) return NotFound();
 
             return View(rentalTransaction);
         }
 
-        // POST: RentalTransactions/Delete/5
-        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (id <= 0)
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
+
+            if (isCustomer) return Forbid();
+
+            var rentalTransaction = await _context.RentalTransactions
+                .Include(t => t.ReturnInfos)
+                .Include(t => t.RentalRequest)
+                    .ThenInclude(r => r.User)
+                .Include(t => t.Equipment)
+                .FirstOrDefaultAsync(t => t.RentalTransactionId == id);
+
+            if (rentalTransaction == null) return NotFound();
+
+            // Define restorable return conditions
+            var restorableConditions = new[] { "On Time in Good Condition", "Late But Good Condition" };
+
+            foreach (var returnInfo in rentalTransaction.ReturnInfos.ToList())
             {
-                return Problem("Entity set 'EquipmentRentalDbContext.RentalTransactions'  is null.");
+                bool wasRestored = returnInfo.StockRestored ?? false;
+                bool isRestorable = restorableConditions.Contains(returnInfo.ReturnCondition?.Trim(), StringComparer.OrdinalIgnoreCase);
+
+                if (wasRestored && isRestorable)
+                {
+                    var equipment = rentalTransaction.Equipment;
+                    if (equipment != null)
+                    {
+                        equipment.Quantity = Math.Max(0, equipment.Quantity - 1);
+                        equipment.AvailabilityStatus = equipment.Quantity > 0;
+                        _context.Equipments.Update(equipment);
+                    }
+                }
+
+                _context.ReturnInfos.Remove(returnInfo);
             }
-            var rentalTransaction = await _context.RentalTransactions.FindAsync(id);
-            if (rentalTransaction != null)
+
+            // Delete document from wwwroot/documents and from Document table
+            if (!string.IsNullOrEmpty(rentalTransaction.DocumentPath))
             {
-                _context.RentalTransactions.Remove(rentalTransaction);
+                var path = Path.Combine(_webHostEnvironment.WebRootPath, "documents", rentalTransaction.DocumentPath);
+                if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+
+                var document = await _context.Documents
+                    .FirstOrDefaultAsync(d => d.FileName == rentalTransaction.DocumentPath);
+
+                if (document != null)
+                    _context.Documents.Remove(document);
             }
-            
+
+            _context.RentalTransactions.Remove(rentalTransaction);
             await _context.SaveChangesAsync();
+
+            var notification = new Notification
+            {
+                Type = "Rental Transaction Deleted",
+                Message = "Your rental transaction has been deleted by the admin.",
+                Status = false
+            };
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            _context.NotificationUsers.Add(new NotificationUser
+            {
+                NotificationId = notification.NotificationId,
+                UserId = rentalTransaction.RentalRequest.UserId
+            });
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
+
+
         private bool RentalTransactionExists(int id)
         {
-          return (_context.RentalTransactions?.Any(e => e.RentalTransactionId == id)).GetValueOrDefault();
+            return _context.RentalTransactions.Any(e => e.RentalTransactionId == id);
         }
+
+        public async Task<IActionResult> DownloadDocument(int id)
+        {
+            var transaction = await _context.RentalTransactions.FindAsync(id);
+            if (transaction == null || string.IsNullOrEmpty(transaction.DocumentPath))
+                return NotFound();
+
+            var filePath = Path.Combine(_webHostEnvironment.WebRootPath, "documents", transaction.DocumentPath);
+
+            // First try from wwwroot
+            if (System.IO.File.Exists(filePath))
+            {
+                var contentType = "application/octet-stream";
+                return File(System.IO.File.ReadAllBytes(filePath), contentType, Path.GetFileName(filePath));
+            }
+
+            // If not found in wwwroot, try fetching from the database
+            var doc = await _context.Documents
+                .FirstOrDefaultAsync(d => d.FileName == transaction.DocumentPath && d.UserId == transaction.UserId);
+
+            if (doc != null && doc.FileUpload != null)
+            {
+                var contentType = GetMimeTypeFromExtension(Path.GetExtension(doc.FileName));
+
+                return File(doc.FileUpload, contentType, doc.FileName);
+            }
+
+            return NotFound("Document not found in filesystem or database.");
+        }
+
+
+        private string GetMimeTypeFromExtension(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".pdf" => "application/pdf",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".txt" => "text/plain",
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                _ => "application/octet-stream",
+            };
+        }
+
+
+
+
+
+
+
+        // Updated HandleExtraFee GET
+        public async Task<IActionResult> HandleExtraFee(int id)
+        {
+            var transaction = await _context.RentalTransactions
+                .Include(t => t.ReturnInfos)
+                .Include(t => t.RentalRequest)
+                .Include(t => t.User)
+                .Include(t => t.Equipment)
+                .FirstOrDefaultAsync(t => t.RentalTransactionId == id);
+
+            if (transaction == null) return NotFound();
+
+            var identityUser = await _userManager.GetUserAsync(User);
+            var mainUser = identityUser?.MainUserId != null
+                ? await _context.Users.FindAsync(identityUser.MainUserId)
+                : null;
+
+            if (mainUser == null || (mainUser.RoleId != 1 && mainUser.RoleId != 3))
+                return Forbid();
+
+            var returnInfo = transaction.ReturnInfos.FirstOrDefault();
+            if (returnInfo == null || ((returnInfo.LateReturnFees ?? 0) + (returnInfo.AdditionalCharges ?? 0)) == 0)
+                return RedirectToAction("Index");
+
+            var expectedReturn = transaction.RentalTransactionReturnDate.Date;
+            var actualReturn = returnInfo.ReturnDate.Date;
+            var lateDays = Math.Max(0, (int)(actualReturn - expectedReturn).TotalDays);
+
+            double perDayLateFee = returnInfo.LateReturnFees ?? 0;
+            double extraCharges = returnInfo.AdditionalCharges ?? 0;
+            double totalLateFee = (perDayLateFee * lateDays) + extraCharges;
+            double alreadyPaid = returnInfo.PaidLateFees ?? 0;
+            double remainingDue = Math.Max(0, totalLateFee - alreadyPaid);
+
+            // Set all needed ViewBags
+            ViewBag.LateFeePerDay = perDayLateFee;
+            ViewBag.LateDays = lateDays;
+            ViewBag.TotalLateFee = totalLateFee;
+            ViewBag.PaidLateFees = alreadyPaid; 
+            ViewBag.ExtraCharges = extraCharges;
+            ViewBag.TotalExtraDue = remainingDue;
+
+            return View(transaction);
+        }
+
+
+
+        // Updated HandleExtraFee POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> HandleExtraFee(int id, double extraPaid)
+        {
+            var transaction = await _context.RentalTransactions
+                .Include(t => t.ReturnInfos)
+                .Include(t => t.RentalRequest)
+                .Include(t => t.User)
+                .Include(t => t.Equipment)
+                .FirstOrDefaultAsync(t => t.RentalTransactionId == id);
+
+            if (transaction == null) return NotFound();
+
+            var identityUser = await _userManager.GetUserAsync(User);
+            var mainUser = identityUser?.MainUserId != null
+                ? await _context.Users.FindAsync(identityUser.MainUserId)
+                : null;
+
+            if (mainUser == null || (mainUser.RoleId != 1 && mainUser.RoleId != 3))
+                return Forbid();
+
+            var returnInfo = transaction.ReturnInfos.FirstOrDefault();
+            if (returnInfo == null) return RedirectToAction("Index");
+
+            var expectedReturn = transaction.RentalTransactionReturnDate.Date;
+            var actualReturn = returnInfo.ReturnDate.Date;
+            var lateDays = Math.Max(0, (int)(actualReturn - expectedReturn).TotalDays);
+
+            double perDayFee = returnInfo.LateReturnFees ?? 0;
+            double extraCharges = returnInfo.AdditionalCharges ?? 0;
+            double totalLateFee = (perDayFee * lateDays) + extraCharges;
+
+            double alreadyPaidLate = returnInfo.PaidLateFees ?? 0;
+            double remainingDue = Math.Max(0, totalLateFee - alreadyPaidLate);
+
+            if (extraPaid > remainingDue)
+            {
+                ViewBag.TotalExtraDue = remainingDue;
+                ViewBag.LateFeePerDay = perDayFee;
+                ViewBag.LateDays = lateDays;
+                ViewBag.TotalLateFee = totalLateFee;
+                ModelState.AddModelError("", $"Amount exceeds remaining balance. Only {remainingDue:C} is due.");
+                return View(transaction);
+            }
+
+            returnInfo.PaidLateFees = alreadyPaidLate + extraPaid;
+
+            double totalPaid = (transaction.Deposit) + returnInfo.PaidLateFees.Value;
+            double fullRequired = transaction.RentalFee + totalLateFee;
+
+            transaction.PaymentStatus = totalPaid == 0
+                ? "Not yet"
+                : totalPaid < fullRequired ? "Partially Paid" : "Paid";
+
+            await _context.SaveChangesAsync();
+            TempData["ExtraFeePaid"] = $"Extra payment of {extraPaid:C} recorded.";
+            return RedirectToAction("Index");
+        }
+
+
+
+        ///view late fee payment statement 
+        
+        public async Task<IActionResult> ViewLateFeeStatement(int id)
+        {
+            var transaction = await _context.RentalTransactions
+                .Include(t => t.ReturnInfos)
+                .Include(t => t.RentalRequest)
+                .Include(t => t.User)
+                .Include(t => t.Equipment)
+                .FirstOrDefaultAsync(t => t.RentalTransactionId == id);
+
+            if (transaction == null) return NotFound();
+
+            var (mainUser, isAdminOrManager, isCustomer) = await GetCurrentUser();
+
+            if (isCustomer && transaction.UserId != mainUser.UserId)
+                return Forbid(); // Block customers from viewing other users' transactions
+
+
+            var returnInfo = transaction.ReturnInfos.FirstOrDefault();
+            if (returnInfo == null) return RedirectToAction("Index");
+
+            var expectedReturn = transaction.RentalTransactionReturnDate.Date;
+            var actualReturn = returnInfo.ReturnDate.Date;
+            var lateDays = Math.Max(0, (int)(actualReturn - expectedReturn).TotalDays);
+
+            double perDayLateFee = returnInfo.LateReturnFees ?? 0;
+            double extraCharges = returnInfo.AdditionalCharges ?? 0;
+            double totalLateFee = (perDayLateFee * lateDays) + extraCharges;
+            double paid = returnInfo.PaidLateFees ?? 0;
+
+            ViewBag.LateFeePerDay = perDayLateFee;
+            ViewBag.LateDays = lateDays;
+            ViewBag.TotalLateFee = totalLateFee;
+            ViewBag.PaidLateFees = paid;
+            ViewBag.ExtraCharges = extraCharges;
+            ViewBag.IsStatement = true;
+
+            return View("HandleExtraFee", transaction); // reuse existing view
+        }
+
+
+
+
+
     }
+
 }

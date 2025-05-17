@@ -1,0 +1,182 @@
+﻿@model ProjectDBClassLibrary.Model.ReturnInfo
+@using ProjectDBClassLibrary.Model
+
+@{
+    ViewData["Title"] = "Rental Return Information";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var transaction = ViewBag.Transaction as RentalTransaction;
+    var rentalReturnDateStr = transaction?.RentalTransactionReturnDate.ToString("yyyy-MM-dd");
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="@(Model.ReturnId == 0 ? "Create" : "Edit")" method="post" onsubmit="return validateFees()">
+            @if (Model.ReturnId != 0)
+            {
+                    <input type="hidden" asp-for="ReturnId" />
+            }
+            <input type="hidden" asp-for="TransactionId" />
+
+            <div class="mb-3">
+                <label class="form-label">Transaction ID</label>
+                <input class="form-control" value="@transaction?.RentalTransactionId" readonly />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">User</label>
+                <input class="form-control" value="@transaction?.User.Fullname" readonly />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Equipment</label>
+                <input class="form-control" value="@transaction?.Equipment.Name" readonly />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ReturnDate" class="form-label"></label>
+                <input asp-for="ReturnDate"
+                       type="date"
+                       class="form-control"
+                       min="@rentalReturnDateStr"
+                       id="ReturnDate" />
+                <span asp-validation-for="ReturnDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3" id="conditionWrapper">
+                <label asp-for="ReturnCondition" class="form-label"></label>
+                <select asp-for="ReturnCondition" class="form-select" id="conditionSelect"></select>
+                <span asp-validation-for="ReturnCondition" class="text-danger"></span>
+            </div>
+
+            <div id="feeSection">
+                <div class="mb-3">
+                    <label asp-for="LateReturnFees" class="form-label"></label>
+                    <input asp-for="LateReturnFees" class="form-control" id="lateFeeInput" />
+                    <span asp-validation-for="LateReturnFees" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="AdditionalCharges" class="form-label"></label>
+                    <input asp-for="AdditionalCharges" class="form-control" id="additionalCharges" />
+                    <span asp-validation-for="AdditionalCharges" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Rental Fee</label>
+                    <input class="form-control" id="rentalFee" value="@transaction?.RentalFee.ToString("F2")" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Days Late</label>
+                    <input class="form-control" id="daysLate" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Late Fee Total</label>
+                    <input class="form-control" id="lateFeeTotal" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Total Return Amount</label>
+                    <input class="form-control" id="totalAmount" readonly />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+        <script>
+            const rentalEndDate = new Date("@rentalReturnDateStr");
+
+            function calculateTotals() {
+                const lateFee = parseFloat(document.getElementById("lateFeeInput")?.value || 0);
+                const returnDate = new Date(document.getElementById("ReturnDate").value);
+                const rentalFee = parseFloat(document.getElementById("rentalFee")?.value || 0);
+                const extra = parseFloat(document.getElementById("additionalCharges")?.value || 0);
+
+                const lateDays = Math.max(0, Math.ceil((returnDate - rentalEndDate) / (1000 * 60 * 60 * 24)));
+                const lateFeeTotal = lateFee * lateDays;
+                const total = rentalFee + lateFeeTotal + extra;
+
+                document.getElementById("daysLate").value = lateDays;
+                document.getElementById("lateFeeTotal").value = lateFeeTotal.toFixed(2);
+                document.getElementById("totalAmount").value = total.toFixed(2);
+
+                autoUpdateCondition(returnDate);
+            }
+
+            function autoUpdateCondition(returnDate) {
+                const conditionSelect = document.getElementById("conditionSelect");
+                const conditionWrapper = document.getElementById("conditionWrapper");
+
+                const returnStr = returnDate.toISOString().split("T")[0];
+                const rentalStr = rentalEndDate.toISOString().split("T")[0];
+
+                if (returnStr === rentalStr) {
+                    conditionWrapper.style.display = "none";
+                    conditionSelect.innerHTML = `<option selected value="On Time in Good Condition">On Time in Good Condition</option>`;
+
+                    document.getElementById("lateFeeInput").value = 0;
+                    document.getElementById("additionalCharges").value = 0;
+                    document.getElementById("daysLate").value = 0;
+                    document.getElementById("lateFeeTotal").value = "0.00";
+                    document.getElementById("totalAmount").value = parseFloat(document.getElementById("rentalFee").value || 0).toFixed(2);
+                } else if (returnStr > rentalStr) {
+                    conditionWrapper.style.display = "block";
+                    const options = [
+                        "Late But Good Condition",
+                        "Returned with Damage",
+                        "Lost"
+                    ];
+                    const previousValue = conditionSelect.value;
+                    conditionSelect.innerHTML = options.map(opt => {
+                        const selected = opt === previousValue ? 'selected' : '';
+                        return `<option value="${opt}" ${selected}>${opt}</option>`;
+                    }).join("");
+                }
+
+                toggleFeeSection();
+            }
+
+            function toggleFeeSection() {
+                const selected = document.getElementById("conditionSelect").value;
+                const isGoodCondition = selected.trim().toLowerCase() === "on time in good condition";
+                document.getElementById("feeSection").style.display = isGoodCondition ? "none" : "block";
+            }
+
+            function validateFees() {
+                const selected = document.getElementById("conditionSelect").value;
+                const isGoodCondition = selected.trim().toLowerCase() === "on time in good condition";
+                const errorSpan = document.querySelector("#lateFeeInput + span.text-danger");
+                errorSpan.innerText = "";
+
+                if (!isGoodCondition) {
+                    const lateFee = document.getElementById("lateFeeInput").value;
+                    if (!lateFee || parseFloat(lateFee) <= 0) {
+                        errorSpan.innerText = "Late Fee is required when condition is not 'On Time in Good Condition'.";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                calculateTotals();
+                document.getElementById("ReturnDate").addEventListener("change", calculateTotals);
+                document.getElementById("lateFeeInput")?.addEventListener("input", calculateTotals);
+                document.getElementById("additionalCharges")?.addEventListener("input", calculateTotals);
+                document.getElementById("conditionSelect").addEventListener("change", function () {
+                    toggleFeeSection();
+                    calculateTotals();
+                });
+            });
+        </script>
+}
