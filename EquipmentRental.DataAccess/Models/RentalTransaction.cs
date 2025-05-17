@@ -18,13 +18,14 @@ namespace EquipmentRental.DataAccess.Models
         [Key]
         public int RentalTransactionId { get; set; }
         [Required]
-        public int? RentalRequestId { get; set; }
+        public int RentalRequestId { get; set; }
 
         [Required]
-        public int? EquipmentId { get; set; }
+        public int EquipmentId { get; set; }
 
         [Required]
-        public int? CustomerId { get; set; }
+        public int CustomerId { get; set; }
+
 
         [Column(TypeName = "datetime")]
         public DateTime RentalStartDate { get; set; }
