@@ -1,57 +1,164 @@
-﻿@model EquipmentRental.DataAccess.Models.ReturnRecord
+@model EquipmentRental.DataAccess.Models.ReturnRecord
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Return Record";
+    var transaction = ViewBag.Transaction as EquipmentRental.DataAccess.Models.RentalTransaction;
 }
 
-<h1>Edit</h1>
-
-<h4>ReturnRecord</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="ReturnRecordId" />
-            <div class="form-group">
-                <label asp-for="RentalTransactionId" class="control-label"></label>
-                <select asp-for="RentalTransactionId" class="form-control" asp-items="ViewBag.RentalTransactionId"></select>
-                <span asp-validation-for="RentalTransactionId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ActualReturnDate" class="control-label"></label>
-                <input asp-for="ActualReturnDate" class="form-control" />
-                <span asp-validation-for="ActualReturnDate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ReturnCondition" class="control-label"></label>
-                <input asp-for="ReturnCondition" class="form-control" />
-                <span asp-validation-for="ReturnCondition" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="LateReturnFee" class="control-label"></label>
-                <input asp-for="LateReturnFee" class="form-control" />
-                <span asp-validation-for="LateReturnFee" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="AdditionalCharges" class="control-label"></label>
-                <input asp-for="AdditionalCharges" class="form-control" />
-                <span asp-validation-for="AdditionalCharges" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Notes" class="control-label"></label>
-                <input asp-for="Notes" class="form-control" />
-                <span asp-validation-for="Notes" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@ViewData["Title"]</h2>
+        <a href="/ReturnRecords" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
     </div>
-</div>
-
-<div>
-    <a asp-action="Index">Back to List</a>
+    
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Return Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.ReturnRecordId" />
+                        
+                        <!-- Transaction Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Transaction</label>
+                                <select name="RentalTransactionId" id="RentalTransactionId" class="form-select" disabled>
+                                    @foreach (var item in ViewBag.Transactions)
+                                    {
+                                        <option value="@item.Value" selected>@item.Text</option>
+                                    }
+                                </select>
+                                <input type="hidden" name="RentalTransactionId" value="@Model.RentalTransactionId" />
+                            </div>
+                        </div>
+                        
+                        <!-- Return Details -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Return Date</label>
+                                <input name="ActualReturnDate" class="form-control" type="date" value="@Model.ActualReturnDate.ToString("yyyy-MM-dd")" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Equipment Condition</label>
+                                <select name="ReturnCondition" class="form-select">
+                                    @if (Model.ReturnCondition == "Excellent")
+                                    {
+                                        <option value="Excellent" selected>Excellent</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="Excellent">Excellent</option>
+                                    }
+                                    
+                                    @if (Model.ReturnCondition == "Good" || string.IsNullOrEmpty(Model.ReturnCondition))
+                                    {
+                                        <option value="Good" selected>Good</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="Good">Good</option>
+                                    }
+                                    
+                                    @if (Model.ReturnCondition == "Fair")
+                                    {
+                                        <option value="Fair" selected>Fair</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="Fair">Fair</option>
+                                    }
+                                    
+                                    @if (Model.ReturnCondition == "Poor")
+                                    {
+                                        <option value="Poor" selected>Poor</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="Poor">Poor</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Financial Details -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Late Return Fee ($)</label>
+                                <input name="LateReturnFee" class="form-control" type="number" step="0.01" min="0" value="@Model.LateReturnFee" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Additional Charges ($)</label>
+                                <input name="AdditionalCharges" class="form-control" type="number" step="0.01" min="0" value="@Model.AdditionalCharges" />
+                            </div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Notes</label>
+                                <textarea name="Notes" class="form-control" rows="4" placeholder="Enter any notes about the return condition, damage, etc.">@Model.Notes</textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Transaction Details</h5>
+                </div>
+                <div class="card-body" id="transactionDetails">
+                    @if (transaction != null)
+                    {
+                        <p><strong>Equipment:</strong> @transaction.Equipment?.Name</p>
+                        <p><strong>Customer:</strong> @transaction.Customer?.FullName</p>
+                        <p><strong>Rental Period:</strong> @transaction.RentalStartDate.ToShortDateString() to @transaction.RentalEndDate.ToShortDateString()</p>
+                        <p><strong>Expected Return:</strong> @transaction.RentalEndDate.ToShortDateString()</p>
+                        <hr />
+                        <p><strong>Rental Fee:</strong> $@transaction.RentalFee.ToString("F2")</p>
+                        <p><strong>Deposit:</strong> $@transaction.Deposit.ToString("F2")</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Transaction details not available</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
