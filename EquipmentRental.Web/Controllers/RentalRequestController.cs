@@ -15,6 +15,37 @@ public class RentalRequestController : Controller
         _context = context;
     }
 
+    // GET: /RentalRequest/Details/5
+    [Authorize]
+    public async Task<IActionResult> Details(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var rentalRequest = await _context.RentalRequests
+            .Include(r => r.Customer)
+            .Include(r => r.Equipment)
+            .FirstOrDefaultAsync(m => m.RentalRequestId == id);
+
+        if (rentalRequest == null)
+        {
+            return NotFound();
+        }
+
+        // Check authorization - customers can only view their own requests
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var isManager = User.IsInRole("Manager") || User.IsInRole("Administrator") || User.IsInRole("Admin");
+
+        if (!isManager && rentalRequest.CustomerId != userId)
+        {
+            return Forbid();
+        }
+
+        return View(rentalRequest);
+    }
+
     // GET: /RentalRequest
     public async Task<IActionResult> Index(string search = null, string status = null)
     {

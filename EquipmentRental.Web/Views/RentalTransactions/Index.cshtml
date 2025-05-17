@@ -1,0 +1,160 @@
+@model IEnumerable<EquipmentRental.DataAccess.Models.RentalTransaction>
+
+@{
+    ViewData["Title"] = "Rental Transactions";
+    var search = ViewBag.Search as string ?? "";
+    var status = ViewBag.Status as string ?? "";
+    var statusOptions = ViewBag.StatusOptions as string[] ?? new[] { "All", "Paid", "Pending", "Refunded", "Cancelled" };
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>@ViewData["Title"]</h2>
+        @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
+        {
+            <div class="btn-group">
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Create New Transaction
+                </a>
+                <a asp-action="SelectRequest" class="btn btn-success">
+                    <i class="bi bi-list-check"></i> Select from Requests
+                </a>
+            </div>
+        }
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Search & Filter</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="@Url.Action("Index")">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" value="@search" placeholder="Search by equipment name or status...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="status" class="form-label">Payment Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="" selected="@(string.IsNullOrEmpty(status))">All Statuses</option>
+                                @foreach (var option in statusOptions.Where(o => o != "All"))
+                                {
+                                    <option value="@option" selected="@(status == option)">@option</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transaction List</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="alert alert-info m-3">
+                    <i class="bi bi-info-circle"></i> No transactions found matching your criteria.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Equipment</th>
+                                <th>Customer</th>
+                                <th>Rental Period</th>
+                                <th>Rental Fee</th>
+                                <th>Status</th>
+                                <th>Documents</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@item.RentalTransactionId</td>
+                                    <td>@item.Equipment.Name</td>
+                                    <td>@item.Customer.FullName</td>
+                                    <td>
+                                        <small class="d-block text-muted">@item.RentalStartDate.ToShortDateString() - @item.RentalEndDate.ToShortDateString()</small>
+                                        @item.RentalPeriod days
+                                    </td>
+                                    <td>
+                                        <div>$@item.RentalFee.ToString("F2")</div>
+                                        <small class="text-muted">Deposit: $@item.Deposit.ToString("F2")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(item.PaymentStatus == "Paid" ? "bg-success" : item.PaymentStatus == "Pending" ? "bg-warning" : "bg-secondary")">
+                                            @item.PaymentStatus
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (item.Documents != null && item.Documents.Any())
+                                        {
+                                            <a href="@Url.Action("Index", "Documents", new { transactionId = item.RentalTransactionId })" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-file-earmark"></i> @item.Documents.Count
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No docs</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a asp-action="Details" asp-route-id="@item.RentalTransactionId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@item.RentalTransactionId" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a asp-action="Delete" asp-route-id="@item.RentalTransactionId" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
