@@ -1,65 +1,40 @@
 ﻿@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
 
-@{
-    ViewData["Title"] = "Index";
-}
+<h2>Feedbacks</h2>
 
-<h1>Index</h1>
-
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
 <table class="table">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.CommentText)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Rating)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsVisible)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
+            <th>Equipment</th>
+            <th>User</th>
+            <th>Rating</th>
+            <th>Comment</th>
+            <th>Date</th>
+            <th>Visible</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.CommentText)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rating)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.IsVisible)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Equipment.AvailabilityStatus)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.User.Email)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.FeedbackId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.FeedbackId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.FeedbackId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var feedback in Model)
+        {
+            <tr class="@(feedback.IsVisible == true ? "" : "table-secondary")">
+                <td>@feedback.Equipment.Name</td>
+                <td>@feedback.User.Email</td>
+                <td>@feedback.Rating</td>
+                <td>@feedback.CommentText</td>
+                <td>@feedback.CreatedAt.ToString("g")</td>
+                <td>@(feedback.IsVisible == true ? "Yes" : "No")</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@feedback.FeedbackId">Details</a>
+                    @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
+                    {
+                        <span> | </span>
+                        <a asp-action="Edit" asp-route-id="@feedback.FeedbackId">Edit</a>
+                        <span> | </span>
+                        <a asp-action="Delete" asp-route-id="@feedback.FeedbackId">Delete</a>
+                    }
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
