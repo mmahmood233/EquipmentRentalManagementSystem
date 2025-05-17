@@ -22,7 +22,7 @@ namespace EquipmentRental.Web.Controllers
         }
 
         // GET: RentalTransactions
-        public async Task<IActionResult> Index(string search = null, string status = null)
+        public async Task<IActionResult> Index(string? search = null, string? status = null)
         {
             try
             {
@@ -54,7 +54,7 @@ namespace EquipmentRental.Web.Controllers
                     query = query.Where(r => 
                         r.Equipment.Name.Contains(search) || 
                         r.PaymentStatus.Contains(search) ||
-                        r.RentalRequest.Description.Contains(search));
+                       r.RentalRequest.Description.Contains(search!));
                     
                     Debug.WriteLine($"Applied search filter: {search}");
                 }
@@ -151,94 +151,107 @@ namespace EquipmentRental.Web.Controllers
                         PaymentStatus = "Pending",
                         CreatedAt = DateTime.Now
                     };
-                    
-                    ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email", transaction.CustomerId);
-                    ViewData["EquipmentId"] = new SelectList(_context.Equipment.Where(e => e.AvailabilityStatus == "Reserved" || e.EquipmentId == request.EquipmentId), "EquipmentId", "Name", transaction.EquipmentId);
-                    ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests.Where(r => r.Status == "Approved"), "RentalRequestId", "Description", transaction.RentalRequestId);
-                    
+
+                    ViewData["CustomerId"] = new SelectList(
+                        _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
+                        "UserId", "Email", transaction.CustomerId);
+
+                    ViewData["EquipmentId"] = new SelectList(
+                        _context.Equipment.Where(e => e.AvailabilityStatus == "Reserved" || e.EquipmentId == request.EquipmentId),
+                        "EquipmentId", "Name", transaction.EquipmentId);
+
+                    ViewData["RentalRequestId"] = new SelectList(
+                        _context.RentalRequests.Where(r => r.Status == "Approved"),
+                        "RentalRequestId", "Description", transaction.RentalRequestId);
+
+
+
                     ViewBag.PrefilledFromRequest = true;
                     return View(transaction);
                 }
             }
-            
+
             // Regular create form
-            ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email");
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment.Where(e => e.AvailabilityStatus != "Maintenance"), "EquipmentId", "Name");
-            ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests.Where(r => r.Status == "Approved"), "RentalRequestId", "Description");
-            
+            ViewData["CustomerId"] = new SelectList(
+        _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
+        "UserId", "Email");
+
+            ViewData["EquipmentId"] = new SelectList(
+                _context.Equipment.Where(e => e.AvailabilityStatus != "Maintenance"),
+                "EquipmentId", "Name");
+
+            ViewData["RentalRequestId"] = new SelectList(
+                _context.RentalRequests.Where(r => r.Status == "Approved"),
+                "RentalRequestId", "Description");
+
+
             return View();
         }
 
         // POST: RentalTransactions/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [Authorize(Roles = "Manager,Administrator")]
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Manager,Administrator")]
         public async Task<IActionResult> Create(RentalTransaction rentalTransaction)
         {
+            if (!ModelState.IsValid)
+            {
+                PrepareViewData(rentalTransaction);
+                return View(rentalTransaction);
+            }
+
             try
             {
-                // Force validation to pass for pre-filled forms
-                ModelState.Clear();
-                
-                // Set creation date
                 rentalTransaction.CreatedAt = DateTime.Now;
-                
-                // Log transaction details
-                Debug.WriteLine($"Creating transaction: Request={rentalTransaction.RentalRequestId}, Equipment={rentalTransaction.EquipmentId}, Customer={rentalTransaction.CustomerId}");
-                Debug.WriteLine($"Dates: Start={rentalTransaction.RentalStartDate}, End={rentalTransaction.RentalEndDate}");
-                Debug.WriteLine($"Financial: Fee={rentalTransaction.RentalFee}, Deposit={rentalTransaction.Deposit}");
-                
-                // Add transaction to database
                 _context.Add(rentalTransaction);
-                var saveResult = await _context.SaveChangesAsync();
-                Debug.WriteLine($"SaveChangesAsync result: {saveResult}");
-                Debug.WriteLine($"Transaction ID after save: {rentalTransaction.RentalTransactionId}");
-                
-                // Update rental request status
+                await _context.SaveChangesAsync();
+
+                // Update RentalRequest and Equipment status
                 var request = await _context.RentalRequests.FindAsync(rentalTransaction.RentalRequestId);
                 if (request != null)
                 {
                     request.Status = "Confirmed";
                     _context.Update(request);
                 }
-                
-                // Update equipment status
+
                 var equipment = await _context.Equipment.FindAsync(rentalTransaction.EquipmentId);
                 if (equipment != null)
                 {
                     equipment.AvailabilityStatus = "In Use";
                     _context.Update(equipment);
                 }
-                
+
                 await _context.SaveChangesAsync();
-                
                 TempData["Success"] = "Rental transaction created successfully!";
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Exception in Create POST: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
-                
                 ModelState.AddModelError("", $"Error creating transaction: {ex.Message}");
                 PrepareViewData(rentalTransaction);
                 return View(rentalTransaction);
             }
         }
-        
+
+
         // Helper method to prepare ViewData for forms
-        private void PrepareViewData(RentalTransaction rentalTransaction)
+        private void PrepareViewData(RentalTransaction transaction)
         {
-            ViewData["CustomerId"] = new SelectList(_context.Users.Where(u => u.Role.RoleName == "Customer"), "UserId", "Email", rentalTransaction.CustomerId);
-            ViewData["EquipmentId"] = new SelectList(_context.Equipment, "EquipmentId", "Name", rentalTransaction.EquipmentId);
-            ViewData["RentalRequestId"] = new SelectList(_context.RentalRequests.Where(r => r.Status == "Approved"), "RentalRequestId", "Description", rentalTransaction.RentalRequestId);
+            ViewData["CustomerId"] = new SelectList(
+                _context.Users.Include(u => u.Role).Where(u => u.Role.RoleName == "Customer"),
+                "UserId", "Email", transaction.CustomerId);
+
+            ViewData["EquipmentId"] = new SelectList(
+                _context.Equipment.Where(e => e.AvailabilityStatus != "Maintenance" || e.EquipmentId == transaction.EquipmentId),
+                "EquipmentId", "Name", transaction.EquipmentId);
+
+            ViewData["RentalRequestId"] = new SelectList(
+                _context.RentalRequests.Where(r => r.Status == "Approved" || r.RentalRequestId == transaction.RentalRequestId),
+                "RentalRequestId", "Description", transaction.RentalRequestId);
         }
+
 
         // GET: RentalTransactions/MarkAsPaid/5
         [Authorize(Roles = "Manager,Administrator")]
