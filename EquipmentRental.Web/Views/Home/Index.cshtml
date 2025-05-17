@@ -1,103 +1,150 @@
-﻿@model List<ProjectDBClassLibrary.Model.FeedBack>
-
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Home";
 }
 
-<div class="container mt-4">
-
-    <!-- Welcome Image Banner -->
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <img src="~/images/postern.png" class="img-fluid rounded shadow mb-4" alt="Welcome Banner" />
+<!-- Hero Section -->
+<section class="hero-section py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-3">Equipment Rental Made Simple</h1>
+                <p class="lead mb-4">Your one-stop platform for efficient equipment management and rental services. Save time and resources with our streamlined rental process.</p>
+                <div class="d-flex gap-3">
+                    <a href="/Equipment" class="btn btn-primary btn-lg px-4">Browse Equipment</a>
+                    <a href="/Account/Register" class="btn btn-outline-secondary btn-lg px-4">Sign Up</a>
+                </div>
+            </div>
+            <div class="col-lg-6 mt-5 mt-lg-0">
+                <div class="image-placeholder rounded shadow-lg">
+                    <!-- Image placeholder - to be added later -->
+                    <div class="placeholder-text">Equipment Image</div>
+                </div>
+            </div>
         </div>
     </div>
+</section>
 
-    <!-- Quote Header -->
-    <div class="text-center mb-5">
-        <h2 class="fw-bold">We Don’t Just Rent Products, We Build Relationships!</h2>
-        <p class="text-muted">Our customers trust us – here’s what they have to say.</p>
-    </div>
-
-    <!-- Feedback Carousel -->
-    <div id="feedbackCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
-        <div class="carousel-inner">
-            @{
-                int groupSize = 3;
-                for (int i = 0; i < Model.Count; i += groupSize)
-                {
-                    var group = Model.Skip(i).Take(groupSize).ToList();
-                            <div class="carousel-item @(i == 0 ? "active" : "")">
-                                <div class="row justify-content-center">
-                            @foreach (var fb in group)
-                            {
-                                            <div class="col-md-4 mb-3">
-                                                <div class="card h-100 shadow-sm border-0 p-3">
-                                                    <div class="card-body">
-                                                        <p class="card-text">"@fb.Comment"</p>
-                                                    </div>
-                                                    <div class="card-footer bg-transparent border-0">
-                                                        <h6 class="mb-0 fw-bold">@fb.User.Fullname</h6>
-                                                        <small class="text-muted">Rating: @fb.Rating / 5 ⭐</small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                            }
-                                </div>
-                            </div>
-                }
-            }
+<!-- Features Section -->
+<section class="bg-light py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Why Choose Our Platform?</h2>
+            <p class="text-muted">Discover the benefits of our equipment rental management system</p>
         </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#feedbackCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#feedbackCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="feature-icon bg-primary bg-gradient text-white rounded-circle mb-3">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Easy Equipment Discovery</h5>
+                        <p class="card-text">Browse our extensive catalog of equipment with detailed specifications and availability information.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="feature-icon bg-primary bg-gradient text-white rounded-circle mb-3">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Streamlined Booking</h5>
+                        <p class="card-text">Request equipment rentals with our simple booking process and get real-time status updates.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="feature-icon bg-primary bg-gradient text-white rounded-circle mb-3">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Comprehensive Management</h5>
+                        <p class="card-text">Track rentals, manage returns, and access detailed reports through intuitive dashboards.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</section>
 
-   <!-- View All Feedback Button -->
-<div class="text-center mt-4">
-    <a href="/Home/AllFeedback" class="btn btn-outline-primary">View All Feedback</a>
-</div>
+<!-- How It Works Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">How It Works</h2>
+            <p class="text-muted">Our simple three-step process</p>
+        </div>
+        <div class="row">
+            <div class="col-md-4 text-center mb-4 mb-md-0">
+                <div class="step-circle mx-auto mb-3">1</div>
+                <h5 class="fw-bold">Browse Equipment</h5>
+                <p>Explore our catalog and find the equipment you need</p>
+            </div>
+            <div class="col-md-4 text-center mb-4 mb-md-0">
+                <div class="step-circle mx-auto mb-3">2</div>
+                <h5 class="fw-bold">Request Rental</h5>
+                <p>Submit your rental request with preferred dates</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="step-circle mx-auto mb-3">3</div>
+                <h5 class="fw-bold">Receive & Return</h5>
+                <p>Pick up your equipment and return when done</p>
+            </div>
+        </div>
+    </div>
+</section>
 
+<!-- Call to Action -->
+<section class="bg-primary text-white py-5">
+    <div class="container text-center">
+        <h2 class="fw-bold mb-3">Ready to Get Started?</h2>
+        <p class="lead mb-4">Join our platform today and experience efficient equipment rental management</p>
+        <a href="/Equipment" class="btn btn-light btn-lg px-4">Explore Equipment</a>
+    </div>
+</section>
 
-    <!-- Service Quality Chart -->
-    <h2 class="mt-5 mb-3">Service Quality Overview</h2>
-    <canvas id="feedbackChart" height="100"></canvas>
-
-</div>
-
-@section Scripts {
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            const ctx = document.getElementById('feedbackChart').getContext('2d');
-
-            const labels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.AvgRatings.Keys));
-            const data = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.AvgRatings.Values));
-
-            const chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Average Rating',
-                        data: data,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 5
-                        }
-                    }
-                }
-            });
-        </script>
-}
+<style>
+    /* Custom styles for the home page */
+    .hero-section {
+        padding: 4rem 0;
+    }
+    
+    .image-placeholder {
+        background-color: #e9ecef;
+        height: 350px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .placeholder-text {
+        color: #6c757d;
+        font-size: 1.5rem;
+        font-weight: 300;
+    }
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    
+    .step-circle {
+        width: 60px;
+        height: 60px;
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+</style>
