@@ -15,11 +15,14 @@ namespace EquipmentRental.Web.Controllers
 
     {
         private readonly EquipmentRentalDbContext _context;
+        private readonly NotificationService _notificationService;
 
-        public ReturnRecordsController(EquipmentRentalDbContext context)
+        public ReturnRecordsController(EquipmentRentalDbContext context, NotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
+
 
         // GET: ReturnRecords
         public async Task<IActionResult> Index(string search = null, string condition = null, DateTime? fromDate = null, DateTime? toDate = null)
@@ -254,7 +257,25 @@ namespace EquipmentRental.Web.Controllers
                 
                 // Save changes to database
                 await _context.SaveChangesAsync();
-                
+                // Send notification to the customer
+                if (transaction != null)
+                {
+                    await _notificationService.CreateNotification(
+                        transaction.CustomerId,
+                        $"Your return for {transaction.Equipment?.Name ?? "equipment"} has been processed. Thank you!",
+                        "Return Completed"
+                    );
+                }
+                // Send notification to the customer
+                if (transaction != null)
+                {
+                    await _notificationService.CreateNotification(
+                        transaction.CustomerId,
+                        $"Your return for {transaction.Equipment?.Name ?? "equipment"} has been processed. Thank you!",
+                        "Return Completed"
+                    );
+                }
+
                 TempData["Success"] = "Equipment return processed successfully!";
                 return RedirectToAction(nameof(Index));
             }

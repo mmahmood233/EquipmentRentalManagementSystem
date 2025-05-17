@@ -1,6 +1,6 @@
 @using Microsoft.AspNetCore.Http
 @inject IHttpContextAccessor HttpContextAccessor
-
+@using Microsoft.EntityFrameworkCore
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +13,39 @@
     <link rel="stylesheet" href="~/EquipmentRental.Web.styles.css" asp-append-version="true" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+@using Microsoft.EntityFrameworkCore
+@using EquipmentRental.DataAccess.Models
+@inject EquipmentRentalDbContext _context
+
+@{
+    var userEmail = User.Identity.IsAuthenticated ? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value : null;
+    int unreadCount = 0;
+    if (userEmail != null)
+    {
+        unreadCount = _context.Notifications
+            .Include(n => n.User)
+            .Count(n => n.User.Email == userEmail && !n.IsRead);
+    }
+    var bellColor = unreadCount > 0 ? "#dc3545" : "#bbb"; // red if new, gray if none
+}
+
+<li class="nav-item">
+    <a class="nav-link position-relative" asp-controller="Notifications" asp-action="Index" title="Notifications">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="@bellColor" class="bi bi-bell" viewBox="0 0 16 16">
+            <path d="M8 16a2 2 0 0 0 1.985-1.75H6.015A2 2 0 0 0 8 16zm.104-14.804a1 1 0 1 0-2.208 0A5.5 5.5 0 0 0 2 6.5V11l-.986 1.707A1 1 0 0 0 2 14h12a1 1 0 0 0 .986-1.293L14 11V6.5a5.5 5.5 0 0 0-5.896-5.304zM3.5 6.5a4.5 4.5 0 0 1 9 0V11H3.5V6.5zm-1.036 6a.5.5 0 0 1-.464-.314A.5.5 0 0 1 2 11.5V12h12v-.5a.5.5 0 0 1-.5-.314.5.5 0 0 1-.464-.314z" />
+        </svg>
+        @if (unreadCount > 0)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
+                @unreadCount
+            </span>
+        }
+    </a>
+</li>
+
+    </a>
+</li>
+
 <body class="d-flex flex-column min-vh-100">
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-3">

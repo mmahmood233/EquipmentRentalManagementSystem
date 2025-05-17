@@ -1,65 +1,42 @@
 ﻿@model IEnumerable<EquipmentRental.DataAccess.Models.Notification>
-
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "My Notifications";
 }
 
-<h1>Index</h1>
+<h2>Notifications</h2>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
+<table class="table table-hover">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Message)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Type)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsRead)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.User)
-            </th>
-            <th></th>
+            <th>Type</th>
+            <th>Message</th>
+            <th>Date</th>
+            <th>Status</th>
         </tr>
     </thead>
     <tbody>
         @foreach (var item in Model)
         {
-            <tr class="@(item.IsRead ? "" : "table-warning")">
+            var rowClass = item.IsRead ? "" : "fw-bold table-warning";
+            <tr class="@rowClass">
+                <td>@item.Type</td>
                 <td>
-                    @if (!item.IsRead)
+                    <a asp-action="Details" asp-route-id="@item.NotificationId" class="text-dark">
+                        @item.Message
+                    </a>
+                </td>
+                <td>@item.CreatedAt.ToString("g")</td>
+                <td>
+                    @if (item.IsRead)
                     {
-                        <strong>@item.Message</strong>
+                        <span class="badge bg-secondary">Read</span>
                     }
                     else
                     {
-                        @item.Message
-                    }
-                </td>
-                <td>@item.Type</td>
-                <td>@(item.IsRead ? "Read" : "Unread")</td>
-                <td>@item.CreatedAt.ToString("g")</td>
-                <td>@item.User.Email</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@item.NotificationId">Details</a>
-                    @if (User.IsInRole("Administrator") || User.IsInRole("Manager"))
-                    {
-                        <span> | </span>
-                        <a asp-action="Edit" asp-route-id="@item.NotificationId">Edit</a>
-                        <span> | </span>
-                        <a asp-action="Delete" asp-route-id="@item.NotificationId">Delete</a>
+                        <span class="badge bg-primary">Unread</span>
                     }
                 </td>
             </tr>
         }
     </tbody>
-
 </table>

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Equipment Details";
     var feedbacks = ViewBag.Feedbacks as List<EquipmentRental.DataAccess.Models.Feedback>;
+    bool canLeaveFeedback = ViewBag.CanLeaveFeedback ?? false;
 }
 
 <h2>@Model.Name</h2>
@@ -26,7 +27,21 @@
                     <strong>@f.User.FullName</strong>
                     <span class="text-muted">(@f.CreatedAt.ToString("g"))</span>
                 </div>
-                <div>Rating: <strong>@f.Rating</strong></div>
+                <div>
+                    Rating:
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        if (i <= f.Rating)
+                        {
+                            <span style="color: gold;">&#9733;</span>
+                        }
+                        else
+                        {
+                            <span style="color: #ddd;">&#9733;</span>
+                        }
+                    }
+                    <span class="sr-only">(@f.Rating)</span>
+                </div>
                 <p>@f.CommentText</p>
                 @if (User.IsInRole("Manager") || User.IsInRole("Administrator"))
                 {
@@ -46,11 +61,10 @@ else
     <p>No feedback yet for this equipment.</p>
 }
 
-@if (User.IsInRole("Customer") && (ViewBag.CanLeaveFeedback ?? false))
+@if (User.IsInRole("Customer") && canLeaveFeedback)
 {
     <a asp-controller="Feedbacks" asp-action="Create" class="btn btn-success mt-3">Leave Feedback</a>
 }
-
 
 <a asp-action="Index" class="btn btn-link mt-3">Back to List</a>
 

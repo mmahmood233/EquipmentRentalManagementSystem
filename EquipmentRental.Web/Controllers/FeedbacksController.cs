@@ -66,21 +66,31 @@ namespace EquipmentRental.Web.Controllers
 
         // GET: Feedbacks/Create
         [Authorize(Roles = "Customer")]
-
         public async Task<IActionResult> Create()
         {
             var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
 
-            // Get only equipment the current user has rented (rental completed)
+            if (user == null)
+                return Unauthorized();
+
+            // Equipment rented by user
             var rentedEquipmentIds = await _context.RentalTransactions
                 .Where(rt => rt.CustomerId == user.UserId)
                 .Select(rt => rt.EquipmentId)
                 .Distinct()
                 .ToListAsync();
 
+            // Equipment already reviewed by user
+            var feedbackEquipmentIds = await _context.Feedbacks
+                .Where(f => f.UserId == user.UserId)
+                .Select(f => f.EquipmentId)
+                .Distinct()
+                .ToListAsync();
+
+            // Only show rented equipment NOT already reviewed
             var equipmentList = _context.Equipment
-                .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId))
+                .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId) && !feedbackEquipmentIds.Contains(eq.EquipmentId))
                 .Select(eq => new { eq.EquipmentId, eq.Name })
                 .ToList();
 
@@ -90,76 +100,67 @@ namespace EquipmentRental.Web.Controllers
         }
 
 
+
         // POST: Feedbacks/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [Authorize(Roles = "Customer")]
-
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Customer")]
         public async Task<IActionResult> Create([Bind("EquipmentId,CommentText,Rating")] Feedback feedback)
         {
             var userEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userEmail);
 
-            // Only allow feedback for rented equipment
+            if (user == null)
+                return Unauthorized();
+
+            // Validate: Only allow feedback for rented equipment not already reviewed
             bool hasRented = await _context.RentalTransactions
                 .AnyAsync(rt => rt.CustomerId == user.UserId && rt.EquipmentId == feedback.EquipmentId);
-            if (!hasRented)
+
+            bool alreadyReviewed = await _context.Feedbacks
+                .AnyAsync(f => f.UserId == user.UserId && f.EquipmentId == feedback.EquipmentId);
+
+            if (!hasRented || alreadyReviewed)
             {
-                ModelState.AddModelError("EquipmentId", "You can only leave feedback for equipment you have rented.");
-                // re-populate dropdown
-                var rentedEquipmentIds = await _context.RentalTransactions
-                    .Where(rt => rt.CustomerId == user.UserId)
-                    .Select(rt => rt.EquipmentId)
-                    .Distinct()
-                    .ToListAsync();
-
-                var equipmentList = _context.Equipment
-                    .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId))
-                    .Select(eq => new { eq.EquipmentId, eq.Name })
-                    .ToList();
-
-                ViewBag.EquipmentList = new SelectList(equipmentList, "EquipmentId", "Name", feedback.EquipmentId);
-                return View(feedback);
-            }
-
-            feedback.UserId = user.UserId;
-            feedback.CreatedAt = DateTime.Now;
-            feedback.IsVisible = true;
-            if (!ModelState.IsValid)
-            {
-                foreach (var key in ModelState.Keys)
-                {
-                    foreach (var error in ModelState[key].Errors)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"KEY: {key} -- ERROR: {error.ErrorMessage}");
-                    }
-                }
+                ModelState.AddModelError("EquipmentId", "You can only leave feedback for equipment you have rented and not already reviewed.");
             }
 
             if (ModelState.IsValid)
             {
+                feedback.UserId = user.UserId;
+                feedback.CreatedAt = DateTime.Now;
+                feedback.IsVisible = true;
+
                 _context.Add(feedback);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
 
-            // If invalid, repopulate dropdown
-            var rentedIds = await _context.RentalTransactions
+            // Repopulate dropdown if error
+            var rentedEquipmentIds = await _context.RentalTransactions
                 .Where(rt => rt.CustomerId == user.UserId)
                 .Select(rt => rt.EquipmentId)
                 .Distinct()
                 .ToListAsync();
 
-            var equipmentListAgain = _context.Equipment
-                .Where(eq => rentedIds.Contains(eq.EquipmentId))
+            var feedbackEquipmentIds = await _context.Feedbacks
+                .Where(f => f.UserId == user.UserId)
+                .Select(f => f.EquipmentId)
+                .Distinct()
+                .ToListAsync();
+
+            var equipmentList = _context.Equipment
+                .Where(eq => rentedEquipmentIds.Contains(eq.EquipmentId) && !feedbackEquipmentIds.Contains(eq.EquipmentId))
                 .Select(eq => new { eq.EquipmentId, eq.Name })
                 .ToList();
 
-            ViewBag.EquipmentList = new SelectList(equipmentListAgain, "EquipmentId", "Name", feedback.EquipmentId);
+            ViewBag.EquipmentList = new SelectList(equipmentList, "EquipmentId", "Name", feedback.EquipmentId);
+
             return View(feedback);
         }
+
 
         // GET: Feedbacks/Edit/5
         [Authorize(Roles = "Manager,Administrator")]
