@@ -194,7 +194,8 @@ namespace EquipmentRental.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Manager,Administrator")]
-        public async Task<IActionResult> Create(RentalTransaction rentalTransaction)
+        public async Task<IActionResult> Create([Bind("RentalRequestId,EquipmentId,CustomerId,RentalStartDate,RentalEndDate,RentalPeriod,RentalFee,Deposit,PaymentStatus")] RentalTransaction rentalTransaction)
+
         {
             if (!ModelState.IsValid)
             {
@@ -232,6 +233,7 @@ namespace EquipmentRental.Web.Controllers
                 ModelState.AddModelError("", $"Error creating transaction: {ex.Message}");
                 PrepareViewData(rentalTransaction);
                 return View(rentalTransaction);
+
             }
         }
 
