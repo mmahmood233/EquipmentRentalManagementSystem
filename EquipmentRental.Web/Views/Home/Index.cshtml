@@ -15,9 +15,8 @@
                 </div>
             </div>
             <div class="col-lg-6 mt-5 mt-lg-0">
-                <div class="image-placeholder rounded shadow-lg">
-                    <!-- Image placeholder - to be added later -->
-                    <div class="placeholder-text">Equipment Image</div>
+                <div class="image-container rounded shadow-lg">
+                    <img src="~/images/homepageimg.png" alt="Equipment Rental" class="img-fluid rounded" />
                 </div>
             </div>
         </div>
@@ -111,19 +110,21 @@
         padding: 4rem 0;
     }
     
-    .image-placeholder {
-        background-color: #e9ecef;
-        height: 350px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .image-container {
+        height: auto;
         overflow: hidden;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s ease;
     }
     
-    .placeholder-text {
-        color: #6c757d;
-        font-size: 1.5rem;
-        font-weight: 300;
+    .image-container:hover {
+        transform: translateY(-5px);
+    }
+    
+    .image-container img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
     }
     
     .feature-icon {
