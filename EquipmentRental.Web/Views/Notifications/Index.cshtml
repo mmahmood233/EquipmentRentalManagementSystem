@@ -1,0 +1,84 @@
+@model IEnumerable<EquipmentRental.DataAccess.Models.Notification>
+@{
+    ViewData["Title"] = "My Notifications";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <span class="notification-icon-container me-2">
+                <i class="bi bi-bell-fill text-primary"></i>
+            </span>
+            My Notifications
+        </h2>
+    </div>
+    
+    <style>
+        .notification-icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(13, 110, 253, 0.1);
+            border-radius: 50%;
+            vertical-align: middle;
+        }
+        
+        .notification-icon-container i {
+            font-size: 1.25rem;
+        }
+    </style>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Notifications</h5>
+                <span class="badge bg-primary rounded-pill">@Model.Count(n => !n.IsRead) unread</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+                @if (!Model.Any())
+                {
+                    <div class="list-group-item py-4 text-center text-muted">
+                        <i class="bi bi-inbox-fill fs-1 d-block mb-2"></i>
+                        <p>You don't have any notifications yet.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var itemClass = item.IsRead ? "" : "bg-light fw-semibold";
+                        <div class="list-group-item @itemClass">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <h6 class="mb-1">
+                                    <i class="bi bi-info-circle me-2 text-primary"></i>
+                                    @item.Type
+                                </h6>
+                                <small class="text-muted">@item.CreatedAt.ToString("MMM d, yyyy h:mm tt")</small>
+                            </div>
+                            <a asp-action="Details" asp-route-id="@item.NotificationId" class="text-decoration-none text-dark">
+                                <p class="mb-1">@item.Message</p>
+                            </a>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small>
+                                    @if (item.IsRead)
+                                    {
+                                        <span class="badge bg-secondary">Read</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary">Unread</span>
+                                    }
+                                </small>
+                                <a asp-action="Details" asp-route-id="@item.NotificationId" class="btn btn-sm btn-outline-primary">View Details</a>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

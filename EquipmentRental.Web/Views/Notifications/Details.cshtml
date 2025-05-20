@@ -1,0 +1,72 @@
+@model EquipmentRental.DataAccess.Models.Notification
+
+@{
+    ViewData["Title"] = "Notification Details";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <span class="notification-icon-container me-2">
+                <i class="bi bi-bell-fill text-primary"></i>
+            </span>
+            Notification Details
+        </h2>
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Notifications
+        </a>
+    </div>
+    
+    <style>
+        .notification-icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(13, 110, 253, 0.1);
+            border-radius: 50%;
+            vertical-align: middle;
+        }
+        
+        .notification-icon-container i {
+            font-size: 1.25rem;
+        }
+    </style>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle me-2 text-primary"></i>
+                    @Model.Type
+                </h5>
+                <div>
+                    @if (Model.IsRead)
+                    {
+                        <span class="badge bg-secondary">Read</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-primary">Unread</span>
+                    }
+                    <span class="ms-2 text-muted">@Model.CreatedAt.ToString("MMM d, yyyy h:mm tt")</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-light border">
+                <p class="mb-0 fs-5">@Model.Message</p>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div class="text-muted">
+                    <small>Notification ID: @Model.NotificationId</small>
+                </div>
+                <a asp-action="Index" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Notifications
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

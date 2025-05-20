@@ -1,0 +1,74 @@
+﻿@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
+@{
+    ViewData["Title"] = "All Feedback";
+    bool isAdminOrManager = User.IsInRole("Administrator") || User.IsInRole("Manager");
+}
+
+<h2>All Feedback</h2>
+@if (User.IsInRole("Customer"))
+{
+    <a asp-action="Create" class="btn btn-success mb-3">Leave Feedback</a>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Equipment</th>
+            <th>User</th>
+            <th>Date</th>
+            <th>Rating</th>
+            <th>Comment</th>
+            @if (isAdminOrManager)
+            {
+                <th>Visible</th>
+            }
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Equipment?.Name</td>
+                <td>@item.User?.FullName</td>
+                <td>@item.CreatedAt.ToString("g")</td>
+                <td>
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        if (i <= item.Rating)
+                        {
+                            <span style="color: gold;">&#9733;</span> @* filled star *@
+                        }
+                        else
+                        {
+                            <span style="color: #ddd;">&#9733;</span> @* empty star *@
+                        }
+                    }
+                    <span class="sr-only">(@item.Rating)</span>
+                </td>
+                <td>@item.CommentText</td>
+                @if (isAdminOrManager)
+                {
+                    <td>
+                        @if (item.IsVisible)
+                        {
+                            <span class="badge bg-success">Visible</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Hidden</span>
+                        }
+                    </td>
+                }
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.FeedbackId" class="btn btn-sm btn-info">Details</a>
+                    @if (isAdminOrManager)
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.FeedbackId" class="btn btn-sm btn-warning">Edit</a>
+                        <a asp-action="Delete" asp-route-id="@item.FeedbackId" class="btn btn-sm btn-danger">Delete</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

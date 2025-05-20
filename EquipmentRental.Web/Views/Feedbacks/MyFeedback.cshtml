@@ -1,0 +1,107 @@
+@model IEnumerable<EquipmentRental.DataAccess.Models.Feedback>
+
+@{
+    ViewData["Title"] = "My Feedback";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <span class="notification-icon-container me-2">
+                <i class="bi bi-star-fill text-warning"></i>
+            </span>
+            My Feedback
+        </h2>
+        <a asp-controller="Equipment" asp-action="Index" class="btn btn-outline-primary">
+            <i class="bi bi-plus-circle me-1"></i> Add New Feedback
+        </a>
+    </div>
+    
+    <style>
+        .notification-icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 193, 7, 0.1);
+            border-radius: 50%;
+            vertical-align: middle;
+        }
+        
+        .notification-icon-container i {
+            font-size: 1.25rem;
+        }
+        
+        .rating-stars {
+            color: #ffc107;
+        }
+    </style>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Your Feedback History</h5>
+                <span class="badge bg-primary rounded-pill">@Model.Count() items</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+                @if (!Model.Any())
+                {
+                    <div class="list-group-item py-4 text-center text-muted">
+                        <i class="bi bi-chat-square-text fs-1 d-block mb-2"></i>
+                        <p>You haven't provided any feedback yet.</p>
+                        <a asp-controller="Equipment" asp-action="Index" class="btn btn-sm btn-primary mt-2">
+                            Browse Equipment to Add Feedback
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <h6 class="mb-1">
+                                    <i class="bi bi-box-seam me-2 text-primary"></i>
+                                    @item.Equipment.Name
+                                </h6>
+                                <small class="text-muted">@item.CreatedAt.ToString("MMM d, yyyy")</small>
+                            </div>
+                            <div class="mb-2">
+                                <span class="rating-stars">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        if (i <= item.Rating)
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-star"></i>
+                                        }
+                                    }
+                                </span>
+                            </div>
+                            <p class="mb-1">@item.CommentText</p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small>
+                                    @if (item.IsVisible == true)
+                                    {
+                                        <span class="badge bg-success">Visible</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Hidden</span>
+                                    }
+                                </small>
+                                <a asp-action="Details" asp-route-id="@item.FeedbackId" class="btn btn-sm btn-outline-primary">View Details</a>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

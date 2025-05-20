@@ -1,0 +1,55 @@
+﻿@model EquipmentRental.DataAccess.Models.Feedback
+
+@{
+    ViewData["Title"] = "Delete Feedback";
+}
+
+<h2>Delete Feedback</h2>
+<div class="alert alert-warning mt-3 mb-3">
+    <strong>Are you sure you want to delete this feedback?</strong>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Equipment</dt>
+            <dd class="col-sm-9">@Model.Equipment?.Name</dd>
+
+            <dt class="col-sm-3">User</dt>
+            <dd class="col-sm-9">@Model.User?.FullName</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@Model.CreatedAt.ToString("g")</dd>
+
+            <dt class="col-sm-3">Rating</dt>
+            <dd class="col-sm-9">
+                @for (var i = 1; i <= 5; i++)
+                {
+                    if (i <= Model.Rating)
+                    {
+                        <span style="color: gold;">&#9733;</span>
+                    }
+                    else
+                    {
+                        <span style="color: #ddd;">&#9733;</span>
+                    }
+                }
+                <span class="sr-only">(@Model.Rating)</span>
+            </dd>
+
+            <dt class="col-sm-3">Comment</dt>
+            <dd class="col-sm-9">@Model.CommentText</dd>
+        </dl>
+        <form asp-action="Delete" method="post">
+            <input type="hidden" asp-for="FeedbackId" />
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
