@@ -503,5 +503,73 @@ namespace EquipmentRental.Web.Controllers
         {
           return (_context.ReturnRecords?.Any(e => e.ReturnRecordId == id)).GetValueOrDefault();
         }
+        
+        // GET: ReturnRecords/MyReturns
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> MyReturns(string search = null, string condition = null, DateTime? fromDate = null, DateTime? toDate = null)
+        {
+            try
+            {
+                // Get current user ID
+                var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+                
+                // Base query with all necessary includes
+                var query = _context.ReturnRecords
+                    .Include(r => r.RentalTransaction)
+                    .ThenInclude(rt => rt.Customer)
+                    .Include(r => r.RentalTransaction.Equipment)
+                    .Where(r => r.RentalTransaction.CustomerId == userId)
+                    .AsQueryable();
+                
+                // Apply search filter if provided
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    query = query.Where(r => 
+                        r.RentalTransaction.Equipment.Name.Contains(search) || 
+                        r.Notes.Contains(search) ||
+                        r.ReturnCondition.Contains(search));
+                }
+                
+                // Apply condition filter if provided
+                if (!string.IsNullOrWhiteSpace(condition))
+                {
+                    query = query.Where(r => r.ReturnCondition == condition);
+                }
+                
+                // Apply date range filters if provided
+                if (fromDate.HasValue)
+                {
+                    query = query.Where(r => r.ActualReturnDate >= fromDate.Value);
+                }
+                
+                if (toDate.HasValue)
+                {
+                    query = query.Where(r => r.ActualReturnDate <= toDate.Value);
+                }
+                
+                // Get final results ordered by return date (newest first)
+                var returnRecords = await query.OrderByDescending(r => r.ActualReturnDate).ToListAsync();
+                
+                // Prepare ViewBag data for filters
+                ViewBag.Conditions = await _context.ReturnRecords
+                    .Where(r => r.RentalTransaction.CustomerId == userId)
+                    .Select(r => r.ReturnCondition)
+                    .Distinct()
+                    .ToListAsync();
+                    
+                ViewBag.CurrentSearch = search;
+                ViewBag.CurrentCondition = condition;
+                ViewBag.FromDate = fromDate;
+                ViewBag.ToDate = toDate;
+                ViewBag.IsCustomerView = true;
+                
+                return View("Index", returnRecords);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"An error occurred: {ex.Message}";
+                return View("Index", new List<ReturnRecord>());
+            }
+        }
     }
 }

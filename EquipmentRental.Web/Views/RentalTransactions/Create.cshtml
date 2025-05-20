@@ -18,7 +18,13 @@
         </div>
         <div class="card-body">
             <form asp-action="Create" method="post">
-                <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert" style="display: none;"></div>
+                @if (ViewData.ModelState.ErrorCount > 0)
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <strong>Please correct the errors below:</strong>
+                    </div>
+                }
                 
                 <div class="row mb-4">
                     <div class="col-md-12 mb-3">
@@ -94,7 +100,8 @@
                     <div class="col-md-4 mb-3">
                         <div class="form-group">
                             <label asp-for="Deposit" class="form-label">Deposit ($)</label>
-                            <input asp-for="Deposit" class="form-control" type="number" min="0" step="0.01" />
+                            <input asp-for="Deposit" class="form-control" type="number" min="0" step="any" value="" />
+                            <small class="form-text text-muted">Enter any amount for the security deposit.</small>
                             <span asp-validation-for="Deposit" class="text-danger"></span>
                         </div>
                     </div>

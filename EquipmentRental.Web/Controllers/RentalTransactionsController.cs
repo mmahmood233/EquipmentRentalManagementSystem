@@ -469,5 +469,56 @@ namespace EquipmentRental.Web.Controllers
         {
           return (_context.RentalTransactions?.Any(e => e.RentalTransactionId == id)).GetValueOrDefault();
         }
+        
+        // GET: RentalTransactions/MyTransactions
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> MyTransactions(string search = null, string status = null)
+        {
+            try
+            {
+                // Get current user ID
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                
+                // Base query with all necessary includes
+                IQueryable<RentalTransaction> query = _context.RentalTransactions
+                    .Include(r => r.Customer)
+                    .Include(r => r.Equipment)
+                    .Include(r => r.RentalRequest)
+                    .Include(r => r.Documents)
+                    .Where(r => r.CustomerId == userId)
+                    .AsQueryable();
+                
+                // Apply search filter if provided
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    query = query.Where(r => 
+                        r.Equipment.Name.Contains(search) || 
+                        r.PaymentStatus.Contains(search) ||
+                        r.RentalRequest.Description.Contains(search));
+                }
+                
+                // Apply status filter if provided
+                if (!string.IsNullOrWhiteSpace(status))
+                {
+                    query = query.Where(r => r.PaymentStatus == status);
+                }
+                
+                // Get final results ordered by creation date (newest first)
+                var transactions = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
+                
+                // Prepare view data
+                ViewBag.Search = search;
+                ViewBag.Status = status;
+                ViewBag.StatusOptions = new[] { "All", "Paid", "Pending", "Refunded", "Cancelled" };
+                ViewBag.IsCustomerView = true;
+                
+                return View("Index", transactions);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"An error occurred: {ex.Message}";
+                return View("Index", new List<RentalTransaction>());
+            }
+        }
     }
 }
