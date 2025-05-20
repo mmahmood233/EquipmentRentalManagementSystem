@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -267,6 +267,34 @@ namespace EquipmentRental.Web.Controllers
         private bool FeedbackExists(int id)
         {
           return (_context.Feedbacks?.Any(e => e.FeedbackId == id)).GetValueOrDefault();
+        }
+        
+        // GET: Feedbacks/MyFeedback
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> MyFeedback()
+        {
+            try
+            {
+                // Get current user ID
+                var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+                
+                // Get all feedback submitted by this user
+                var feedbacks = await _context.Feedbacks
+                    .Include(f => f.Equipment)
+                    .ThenInclude(e => e.Category)
+                    .Include(f => f.User)
+                    .Where(f => f.UserId == userId)
+                    .OrderByDescending(f => f.CreatedAt)
+                    .ToListAsync();
+                
+                ViewBag.IsCustomerView = true;
+                return View(feedbacks);
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"An error occurred: {ex.Message}";
+                return View(new List<Feedback>());
+            }
         }
     }
 }
